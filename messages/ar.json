@@ -1,0 +1,802 @@
+{
+  "app": {
+    "name": "ربيع الأحلام",
+    "product": "نظام ERP سياحي مؤسسي",
+    "subtitle": "واجهة مالية منظمة ومبنية على سير العمل"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "settings": "الإعدادات",
+    "transactions": "المعاملات",
+    "accounting": "المحاسبة",
+    "bsp": "مطابقة BSP",
+    "treasury": "الخزينة",
+    "crm": "إدارة العملاء",
+    "expenses": "المصاريف",
+    "reports": "التقارير",
+    "ocr": "مساحة OCR",
+    "templates": "القوالب"
+  },
+  "navGroups": {
+    "control": "مركز التحكم",
+    "finance": "العمليات المالية",
+    "customer": "العملاء والتحليلات",
+    "documents": "المستندات والقوالب",
+    "ocr": "عمليات OCR"
+  },
+  "navSubgroups": {
+    "overview": "نظرة عامة",
+    "salesFlow": "مسار المبيعات",
+    "accountingFlow": "المسار المحاسبي",
+    "reconciliation": "المطابقة",
+    "relations": "علاقات العملاء",
+    "intelligence": "ذكاء الأعمال",
+    "automation": "أتمتة المستندات",
+    "publishing": "الطباعة والهوية",
+    "ocrOperations": "مركز OCR"
+  },
+  "common": {
+    "search": "بحث",
+    "status": "الحالة",
+    "all": "الكل",
+    "language": "اللغة",
+    "role": "الدور",
+    "moduleUnderConstruction": "تم تجهيز واجهة الموديول الأساسية، وسيتم استكمال سير العمل التفصيلي لاحقاً.",
+    "noResults": "لا توجد نتائج مطابقة."
+  },
+  "roles": {
+    "admin": "مدير النظام",
+    "finance_manager": "مدير مالي",
+    "agent": "موظف حجوزات",
+    "auditor": "مدقق"
+  },
+  "dashboard": {
+    "title": "مركز التحكم المؤسسي",
+    "description": "صورة تشغيلية ومالية سريعة لعمليات السفر عالية الكثافة.",
+    "kpi": {
+      "salesToday": "مبيعات اليوم",
+      "pendingApprovals": "الموافقات المعلقة",
+      "openRefunds": "طلبات الاسترجاع المفتوحة",
+      "ocrLatency": "زمن OCR"
+    },
+    "cta": "فتح محرك المعاملات"
+  },
+  "transactions": {
+    "title": "محرك المعاملات",
+    "subtitle": "جدول مؤسسي افتراضي مع معاينة الأثر المحاسبي وخط زمني للموافقات.",
+    "filters": {
+      "quickPendingApproval": "بانتظار موافقة",
+      "quickHighValue": "قيمة عالية",
+      "quickCashOnly": "نقدي فقط"
+    },
+    "table": {
+      "id": "المعرف",
+      "pnr": "PNR",
+      "ticket": "رقم التذكرة",
+      "customer": "العميل",
+      "airline": "شركة الطيران",
+      "total": "الإجمالي",
+      "status": "الحالة",
+      "createdAt": "تاريخ الإنشاء"
+    },
+    "statusValues": {
+      "draft": "مسودة",
+      "ocr_reviewed": "تمت مراجعة OCR",
+      "pending_approval": "بانتظار الموافقة",
+      "approved": "معتمد",
+      "pending_payment": "بانتظار الدفع",
+      "paid": "مدفوع",
+      "receipt_issued": "تم إصدار الإيصال",
+      "refunded": "مسترجع",
+      "voided": "ملغى"
+    },
+    "panel": {
+      "accountingImpact": "معاينة الأثر المحاسبي",
+      "approvalTimeline": "التسلسل الزمني للموافقة",
+      "auditMeta": "بيانات التدقيق",
+      "createdBy": "أُنشئت بواسطة",
+      "updatedBy": "آخر تعديل بواسطة"
+    },
+    "actions": {
+      "batchApprove": "اعتماد جماعي",
+      "exportPdf": "تصدير PDF",
+      "refund": "استرجاع",
+      "void": "إلغاء",
+      "requiresPin": "يتطلب إعادة تحقق PIN",
+      "approvalRequired": "يتطلب حالة موافقة مناسبة"
+    },
+    "hotkeys": {
+      "title": "اختصارات لوحة المفاتيح",
+      "focusSearch": "‏/ للتركيز على البحث",
+      "nextRow": "J للصف التالي",
+      "prevRow": "K للصف السابق",
+      "nextLowConfidence": "Alt + N للحقل منخفض الثقة التالي",
+      "acceptField": "Alt + A لاعتماد الحقل",
+      "zoomDocument": "Alt + D لفتح التكبير"
+    }
+  },
+  "salesFlow": {
+    "title": "التحكم في مسار المبيعات",
+    "subtitle": "عرض انتقال الحالات وفق القواعد للمعاملة الحالية.",
+    "currentState": "الحالة الحالية",
+    "sla": "حالة SLA",
+    "slaElapsed": "المنقضي: {hours} ساعة",
+    "slaTarget": "الهدف: {hours} ساعة",
+    "level": {
+      "ok": "ضمن الوقت",
+      "warning": "قيد الخطر",
+      "critical": "متجاوز"
+    },
+    "actions": {
+      "review_ocr": "مراجعة OCR",
+      "request_approval": "طلب اعتماد",
+      "approve_sale": "اعتماد البيع",
+      "queue_payment": "إرسال للدفع",
+      "capture_payment": "تأكيد الدفع",
+      "issue_receipt": "إصدار الإيصال",
+      "refund_sale": "استرجاع",
+      "void_sale": "إلغاء"
+    },
+    "nextState": "الحالة التالية",
+    "risk": {
+      "normal": "مخاطر عادية",
+      "high": "مخاطر عالية"
+    },
+    "allowed": "مسموح",
+    "blocked": "محجوب",
+    "ready": "جاهز للتنفيذ",
+    "notReady": "غير جاهز",
+    "pinRequired": "يتطلب PIN",
+    "execute": "تنفيذ",
+    "executeWithPin": "تنفيذ مع PIN",
+    "pinTitle": "إعادة تحقق PIN",
+    "pinSubtitle": "هذا الانتقال عالي المخاطر ويتطلب إدخال PIN.",
+    "pinLabel": "أدخل PIN",
+    "confirm": "تأكيد",
+    "cancel": "إلغاء",
+    "terminal": "لا توجد انتقالات إضافية لهذه الحالة النهائية.",
+    "messages": {
+      "executed": "تم تنفيذ {action} بنجاح.",
+      "executedWithPin": "تم تنفيذ {action} بعد التحقق عبر PIN.",
+      "invalidPin": "رمز PIN غير صحيح. حاول مرة أخرى.",
+      "batchResult": "تم تنفيذ الاعتماد الجماعي: {success} ناجح، {blocked} محجوب، {failed} فشل.",
+      "apiFailed": "فشل طلب API لمسار العمل. حاول مرة أخرى."
+    },
+    "reasons": {
+      "role_not_allowed": "الدور الحالي غير مخول لهذا الإجراء.",
+      "approval_required": "يجب اعتماد المعاملة قبل تنفيذ هذا الإجراء.",
+      "state_not_allowed": "هذا الإجراء غير متاح في الحالة الحالية."
+    }
+  },
+  "accounting": {
+    "title": "وحدة المحاسبة",
+    "subtitle": "معاينة اليومية، دفتر الأستاذ، ميزان المراجعة وعرض مالي متكامل اعتماداً على بيانات المعاملات.",
+    "tabs": {
+      "journal": "قيود اليومية",
+      "ledger": "دفتر الأستاذ",
+      "trialBalance": "ميزان المراجعة",
+      "pnl": "الأرباح والخسائر",
+      "balanceSheet": "الميزانية العمومية"
+    },
+    "filters": {
+      "searchPlaceholder": "ابحث برقم القيد أو الحساب أو المرجع أو شركة الطيران أو الموظف",
+      "allBranches": "كل الفروع",
+      "periodAll": "كل الفترات",
+      "period30": "آخر 30 يوم",
+      "period7": "آخر 7 أيام",
+      "showing": "الصفوف بعد التصفية"
+    },
+    "kpi": {
+      "posted": "القيود المرحلة",
+      "draft": "قيود مسودة",
+      "debit": "إجمالي المدين",
+      "credit": "إجمالي الدائن",
+      "imbalance": "فرق التوازن"
+    },
+    "journal": {
+      "entry": "القيد",
+      "date": "التاريخ",
+      "reference": "المرجع",
+      "account": "الحساب",
+      "debit": "مدين",
+      "credit": "دائن",
+      "branch": "الفرع",
+      "airline": "شركة الطيران",
+      "status": "الحالة",
+      "rows": "عدد الصفوف",
+      "empty": "لا توجد قيود يومية مطابقة للتصفية الحالية.",
+      "stateValues": {
+        "draft": "مسودة",
+        "posted": "مرحل",
+        "reversed": "معكوس"
+      }
+    },
+    "ledger": {
+      "account": "الحساب",
+      "running": "الرصيد التراكمي",
+      "movement": "صافي الحركة",
+      "debitTotal": "إجمالي المدين",
+      "creditTotal": "إجمالي الدائن",
+      "empty": "لا توجد حركة لهذا الحساب ضمن الفلاتر الحالية."
+    },
+    "trialBalance": {
+      "account": "الحساب",
+      "category": "التصنيف",
+      "net": "الصافي",
+      "empty": "لا توجد بيانات لميزان المراجعة ضمن الفلاتر الحالية."
+    },
+    "pnl": {
+      "revenue": "الإيراد",
+      "expense": "المصروف",
+      "netIncome": "صافي الدخل",
+      "margin": "الهامش",
+      "branchBreakdown": "الإيراد مقابل المصروف حسب الفرع",
+      "airlineBreakdown": "صافي الهامش حسب شركة الطيران"
+    },
+    "balanceSheet": {
+      "assets": "الأصول",
+      "liabilities": "الخصوم",
+      "equity": "حقوق الملكية",
+      "balance": "الرصيد",
+      "structure": "التركيب"
+    },
+    "categories": {
+      "asset": "أصل",
+      "liability": "خصم",
+      "equity": "حقوق ملكية",
+      "revenue": "إيراد",
+      "expense": "مصروف"
+    }
+  },
+  "bsp": {
+    "title": "مطابقة BSP",
+    "subtitle": "مطابقة ثنائية بين مبيعات النظام وكشوف BSP مع كشف الفروقات تلقائياً.",
+    "filters": {
+      "searchPlaceholder": "ابحث برقم التذكرة أو PNR أو رقم العملية أو رقم كشف BSP",
+      "allAirlines": "كل شركات الطيران",
+      "allMismatchTypes": "كل أنواع الفروقات"
+    },
+    "kpi": {
+      "systemSales": "مبيعات النظام",
+      "bspSales": "صفوف كشف BSP",
+      "mismatches": "الفروقات المكتشفة",
+      "variance": "صافي الفرق"
+    },
+    "table": {
+      "ticket": "رقم التذكرة",
+      "pnr": "PNR",
+      "airline": "شركة الطيران",
+      "total": "الإجمالي",
+      "status": "الحالة",
+      "statementId": "رقم الكشف",
+      "settlementDate": "تاريخ التسوية"
+    },
+    "split": {
+      "systemTitle": "عرض النظام",
+      "statementTitle": "عرض كشف BSP"
+    },
+    "mismatch": {
+      "title": "كاشف الفروقات",
+      "type": "النوع",
+      "systemAmount": "قيمة النظام",
+      "bspAmount": "قيمة BSP",
+      "delta": "الفرق",
+      "severity": "الحدة",
+      "types": {
+        "missing_in_bsp": "مفقود في BSP",
+        "extra_in_bsp": "زيادة في BSP",
+        "amount_mismatch": "فرق في المبلغ",
+        "tax_mismatch": "فرق في الضريبة",
+        "status_mismatch": "فرق في الحالة"
+      },
+      "severityValues": {
+        "low": "منخفض",
+        "medium": "متوسط",
+        "high": "عالٍ"
+      }
+    },
+    "details": {
+      "title": "تفاصيل التذكرة المحددة",
+      "empty": "اختر أي صف من أي جانب لعرض تفاصيل المطابقة.",
+      "systemRecord": "سجل النظام",
+      "statementRecord": "سجل كشف BSP",
+      "discrepancies": "الفروقات المكتشفة",
+      "notAvailable": "لا يوجد سجل في هذا الجانب.",
+      "noMismatch": "لا توجد فروقات على هذه التذكرة."
+    },
+    "airlineSummary": {
+      "title": "ملخص مجمع حسب شركة الطيران",
+      "systemCount": "النظام",
+      "bspCount": "BSP",
+      "mismatchCount": "الفروقات",
+      "variance": "الفرق"
+    },
+    "timeline": {
+      "title": "الخط الزمني للتسوية",
+      "subtitle": "مقارنة مبلغ النظام مقابل BSP عبر نوافذ التسوية.",
+      "system": "النظام",
+      "bsp": "BSP",
+      "delta": "الفرق"
+    },
+    "empty": {
+      "system": "لا توجد صفوف نظام مطابقة للفلاتر الحالية.",
+      "statement": "لا توجد صفوف كشف BSP مطابقة للفلاتر الحالية.",
+      "mismatch": "لا توجد فروقات ضمن الفلاتر الحالية.",
+      "airlineSummary": "لا توجد بيانات ملخص متاحة."
+    }
+  },
+  "treasury": {
+    "title": "إدارة الخزينة",
+    "subtitle": "مساحة عمل للخزينة تشمل النقدية وPOS والمطابقة البنكية اليدوية بالسحب والإفلات.",
+    "filters": {
+      "searchPlaceholder": "ابحث بالمرجع أو الوصف",
+      "allAccounts": "كل الحسابات البنكية",
+      "reset": "إعادة تعيين الفلاتر"
+    },
+    "kpi": {
+      "cashIn": "تدفق نقدي داخل",
+      "cashOut": "تدفق نقدي خارج",
+      "cashNet": "صافي النقدية",
+      "posPending": "POS معلق",
+      "bankVariance": "فرق البنك",
+      "unmatched": "غير مطابق نظام/كشف"
+    },
+    "table": {
+      "date": "التاريخ",
+      "branch": "الفرع",
+      "direction": "الاتجاه",
+      "amount": "المبلغ",
+      "status": "الحالة",
+      "reference": "المرجع"
+    },
+    "directions": {
+      "in": "دخول",
+      "out": "خروج"
+    },
+    "cashDashboard": {
+      "title": "لوحة الصندوق النقدي"
+    },
+    "posSummary": {
+      "title": "ملخص أجهزة POS",
+      "terminal": "الجهاز",
+      "transactions": "عدد العمليات",
+      "gross": "الإجمالي",
+      "pending": "المعلق"
+    },
+    "bankOverview": {
+      "title": "نظرة عامة على الحسابات البنكية",
+      "ledger": "رصيد الدفتر",
+      "statement": "رصيد كشف البنك",
+      "available": "الرصيد المتاح",
+      "lastSync": "آخر مزامنة"
+    },
+    "reconciliation": {
+      "title": "المطابقة البنكية اليدوية",
+      "subtitle": "اسحب من صفوف النظام وأسقط على صفوف كشف البنك لإنشاء مطابقة.",
+      "realtimeDelta": "الفرق اللحظي (غير المطابق)",
+      "systemUnmatched": "غير مطابق في النظام",
+      "statementUnmatched": "غير مطابق في الكشف",
+      "matchedPairs": "الأزواج المطابقة",
+      "linkedTo": "مرتبط بـ",
+      "delta": "الفرق",
+      "action": "الإجراء",
+      "unmatch": "إلغاء المطابقة"
+    },
+    "empty": {
+      "cash": "لا توجد حركة نقدية ضمن الفلاتر الحالية.",
+      "pos": "لا يوجد ملخص POS ضمن الفلاتر الحالية.",
+      "systemUnmatched": "لا توجد صفوف نظام غير مطابقة.",
+      "statementUnmatched": "لا توجد صفوف كشف غير مطابقة.",
+      "matchedPairs": "لا توجد أزواج مطابقة حتى الآن."
+    }
+  },
+  "crmModule": {
+    "title": "عرض CRM المؤسسي",
+    "subtitle": "ملف عميل 360 مع خط زمني للحجوزات ومراقبة الحد الائتماني وتحليل أعمار الذمم.",
+    "filters": {
+      "searchPlaceholder": "ابحث باسم العميل أو الهاتف أو شركة الطيران المفضلة",
+      "allRiskLevels": "كل مستويات المخاطر"
+    },
+    "kpi": {
+      "customers": "العملاء",
+      "totalSales": "إجمالي المبيعات",
+      "outstanding": "المبالغ المستحقة",
+      "highRisk": "حسابات عالية المخاطر"
+    },
+    "customers": {
+      "title": "محفظة العملاء",
+      "bookings": "حجوزات"
+    },
+    "segment": {
+      "starter": "بداية",
+      "growth": "نمو",
+      "strategic": "استراتيجي"
+    },
+    "risk": {
+      "low": "مخاطر منخفضة",
+      "medium": "مخاطر متوسطة",
+      "high": "مخاطر عالية"
+    },
+    "profile": {
+      "preferredAirline": "شركة الطيران المفضلة",
+      "lastBooking": "آخر حجز",
+      "totalBookings": "إجمالي الحجوزات",
+      "avgTicket": "متوسط التذكرة",
+      "branches": "الفروع"
+    },
+    "credit": {
+      "title": "مؤشر الحد الائتماني",
+      "limit": "الحد الائتماني",
+      "exposure": "التعرّض الحالي",
+      "available": "الرصيد الائتماني المتاح",
+      "utilization": "نسبة الاستخدام"
+    },
+    "aging": {
+      "title": "تصوير أعمار الذمم"
+    },
+    "timeline": {
+      "title": "الخط الزمني لسجل الحجوزات",
+      "date": "التاريخ",
+      "ticket": "التذكرة",
+      "airline": "شركة الطيران",
+      "agent": "الموظف",
+      "amount": "المبلغ",
+      "status": "الحالة"
+    },
+    "empty": {
+      "customers": "لا يوجد عملاء مطابقون للفلاتر الحالية.",
+      "selection": "اختر عميلًا من القائمة لعرض ملف العميل 360.",
+      "timeline": "لا توجد عناصر في الخط الزمني للحجوزات."
+    }
+  },
+  "reportsModule": {
+    "title": "لوحة التقارير وذكاء الأعمال",
+    "subtitle": "خريطة حرارة للمبيعات، تحليلات الهامش، ومحاكاة التدفق النقدي مع drill-down تفاعلي.",
+    "filters": {
+      "searchPlaceholder": "ابحث بشركة الطيران أو الموظف أو رقم العملية",
+      "allBranches": "كل الفروع",
+      "preset7": "آخر 7 أيام",
+      "preset30": "آخر 30 يوم",
+      "preset90": "آخر 90 يوم",
+      "presetAll": "كل الفترات"
+    },
+    "export": {
+      "pdf": "تصدير PDF",
+      "excel": "تصدير Excel",
+      "pdfTriggered": "تمت إضافة تصدير PDF إلى قائمة التنفيذ (واجهة فقط).",
+      "excelTriggered": "تمت إضافة تصدير Excel إلى قائمة التنفيذ (واجهة فقط)."
+    },
+    "kpi": {
+      "grossSales": "إجمالي المبيعات",
+      "margin": "الهامش",
+      "marginPct": "نسبة الهامش",
+      "avgTicket": "متوسط التذكرة",
+      "refundRate": "نسبة الاسترجاع",
+      "pendingCollection": "التحصيلات المعلقة"
+    },
+    "heatmap": {
+      "title": "خريطة حرارة المبيعات",
+      "subtitle": "تركّز الإيرادات حسب أيام الأسبوع والفترات الزمنية.",
+      "day": "اليوم",
+      "hours": {
+        "00_05": "00:00-05:59",
+        "06_11": "06:00-11:59",
+        "12_17": "12:00-17:59",
+        "18_23": "18:00-23:59"
+      },
+      "weekdays": {
+        "0": "الأحد",
+        "1": "الاثنين",
+        "2": "الثلاثاء",
+        "3": "الأربعاء",
+        "4": "الخميس",
+        "5": "الجمعة",
+        "6": "السبت"
+      }
+    },
+    "charts": {
+      "marginByAirline": "الهامش حسب شركة الطيران",
+      "marginByEmployee": "الهامش حسب الموظف",
+      "cashFlowActual": "التدفق النقدي (فعلي)",
+      "cashFlowSimulation": "التدفق النقدي (محاكاة)",
+      "margin": "الهامش",
+      "net": "الصافي",
+      "cumulative": "التراكمي",
+      "inflow": "تدفق داخل",
+      "outflow": "تدفق خارج",
+      "clickToDrill": "اضغط على أي عمود لعرض التفاصيل (drill-down)."
+    },
+    "simulation": {
+      "growth": "سيناريو نمو المبيعات",
+      "cost": "سيناريو تضخم التكلفة",
+      "forecast7": "توقع صافي 7 أيام"
+    },
+    "drill": {
+      "title": "تحليل تفصيلي",
+      "empty": "اختر عمود شركة طيران أو موظف لعرض العمليات المساهمة.",
+      "clear": "مسح التحليل",
+      "date": "التاريخ",
+      "transaction": "العملية",
+      "dimension": "البعد",
+      "gross": "الإجمالي",
+      "margin": "الهامش",
+      "status": "الحالة",
+      "noRows": "لا توجد عمليات مطابقة لفلتر التحليل المحدد."
+    }
+  },
+  "expenseModule": {
+    "title": "المصاريف ومراكز التكلفة",
+    "subtitle": "سير عمل إدخال المصروفات مع توجيه حسب القسم، وضبط مراكز التكلفة، وإجراءات الموافقة.",
+    "filters": {
+      "searchPlaceholder": "ابحث بالمعرف أو المورد أو الموظف أو الوصف",
+      "allDepartments": "كل الأقسام",
+      "allStatuses": "كل الحالات"
+    },
+    "kpi": {
+      "totalAmount": "إجمالي المبلغ",
+      "pendingCount": "الموافقات المعلقة",
+      "approvedAmount": "المبلغ المعتمد",
+      "rejectedAmount": "المبلغ المرفوض",
+      "overBudget": "مراكز تجاوزت الميزانية"
+    },
+    "entry": {
+      "title": "إدخال مصروف",
+      "date": "التاريخ",
+      "department": "القسم",
+      "costCenter": "مركز التكلفة",
+      "category": "الفئة",
+      "description": "الوصف",
+      "vendor": "المورد",
+      "employee": "الموظف",
+      "amount": "المبلغ",
+      "paymentMethod": "طريقة الدفع",
+      "submit": "إرسال المصروف"
+    },
+    "departments": {
+      "sales": "المبيعات",
+      "operations": "العمليات",
+      "finance": "المالية",
+      "it": "تقنية المعلومات",
+      "hr": "الموارد البشرية"
+    },
+    "paymentMethods": {
+      "cash": "نقدي",
+      "card": "بطاقة",
+      "bank": "تحويل بنكي"
+    },
+    "status": {
+      "draft": "مسودة",
+      "pending_manager": "بانتظار المدير",
+      "pending_finance": "بانتظار المالية",
+      "approved": "معتمد",
+      "rejected": "مرفوض"
+    },
+    "routeStatus": {
+      "pending": "معلق",
+      "approved": "معتمد",
+      "rejected": "مرفوض"
+    },
+    "costCenters": {
+      "title": "استخدام مراكز التكلفة"
+    },
+    "routing": {
+      "title": "مسار الموافقات",
+      "approveStep": "اعتماد الخطوة التالية",
+      "reject": "رفض المصروف"
+    },
+    "table": {
+      "title": "سجل المصروفات",
+      "id": "المعرف",
+      "date": "التاريخ",
+      "department": "القسم",
+      "costCenter": "مركز التكلفة",
+      "employee": "الموظف",
+      "amount": "المبلغ",
+      "status": "الحالة"
+    },
+    "messages": {
+      "created": "تم إنشاء المصروف وإرساله لموافقة المدير.",
+      "approved": "تم اعتماد خطوة الموافقة.",
+      "rejected": "تم رفض المصروف.",
+      "invalidCostCenter": "مركز التكلفة المحدد غير صالح."
+    },
+    "empty": {
+      "selection": "اختر صف مصروف لعرض مسار الموافقات.",
+      "rows": "لا توجد مصروفات ضمن الفلاتر الحالية."
+    }
+  },
+  "ocrModule": {
+    "title": "مركز OCR",
+    "subtitle": "ارفع المستند ثم راجع الحقول واعتمدها بسرعة.",
+    "filters": {
+      "searchPlaceholder": "ابحث باسم الملف أو رقم المعاملة أو الفرع"
+    },
+    "top": {
+      "overallConfidence": "متوسط الثقة",
+      "documents": "المستندات",
+      "lowConfidenceDocs": "مستندات منخفضة الثقة",
+      "unresolvedFields": "حقول غير معتمدة",
+      "criticalDocs": "مستندات حرجة"
+    },
+    "viewer": {
+      "title": "عرض المستند",
+      "zoom": "التكبير"
+    },
+    "fields": {
+      "title": "الحقول المستخرجة",
+      "zoom": "تكبير",
+      "accepted": "اعتماد",
+      "pending": "بانتظار الاعتماد"
+    },
+    "hotkeys": {
+      "title": "اختصارات",
+      "nextLow": "Alt + N: الانتقال لحقل منخفض الثقة",
+      "acceptField": "Alt + A: اعتماد الحقل المحدد",
+      "zoomDoc": "Alt + D: تغيير التكبير"
+    },
+    "meta": {
+      "branch": "الفرع",
+      "createdAt": "تاريخ الإنشاء"
+    },
+    "messages": {
+      "alreadyAccepted": "الحقل معتمد مسبقًا.",
+      "fieldAccepted": "تم اعتماد الحقل.",
+      "noLowConfidence": "لا توجد حقول منخفضة الثقة.",
+      "focusedNext": "تم الانتقال للحقل التالي منخفض الثقة.",
+      "zoom140": "تم ضبط التكبير إلى 140٪.",
+      "zoom180": "تم ضبط التكبير إلى 180٪.",
+      "zoom100": "تمت إعادة التكبير إلى 100٪.",
+      "uploadSuccess": "تم رفع واستخراج {count} مستند.",
+      "uploadPartial": "اكتمل الرفع: {success} نجح و{failed} فشل.",
+      "uploadFailed": "تعذر استخراج البيانات من الملف."
+    },
+    "empty": {
+      "document": "لا يوجد مستند.",
+      "fields": "لا توجد حقول.",
+      "section": "لا توجد نتائج لهذا القسم."
+    },
+    "sections": {
+      "title": "القسم",
+      "workspace": "الكل",
+      "workspaceDescription": "كل المستندات.",
+      "queue": "تحتاج مراجعة",
+      "queueDescription": "المستندات ذات الحقول منخفضة الثقة.",
+      "quality": "الجودة",
+      "qualityDescription": "عرض الجودة حسب الفروع."
+    },
+    "quality": {
+      "title": "جودة OCR حسب الفرع",
+      "subtitle": "متابعة عدد المستندات والحقول غير المعتمدة.",
+      "branch": "الفرع",
+      "documents": "المستندات",
+      "unresolved": "غير معتمد",
+      "confidence": "الثقة",
+      "empty": "لا توجد بيانات جودة لهذا الفلتر."
+    },
+    "upload": {
+      "help": "ارفع ملفات PDF/JPG/PNG/WEBP/TXT لاستخراج الحقول.",
+      "button": "رفع ملفات",
+      "processing": "جاري الرفع..."
+    },
+    "entryFlow": {
+      "title": "خطوات الإدخال",
+      "steps": {
+        "upload": {
+          "title": "رفع المستند",
+          "description": "ارفع ملف التذكرة أو الفاتورة."
+        },
+        "review": {
+          "title": "مراجعة الحقول",
+          "description": "راجع القيم المستخرجة لكل مستند."
+        },
+        "correct": {
+          "title": "تصحيح الحقول",
+          "description": "عدّل الحقول منخفضة الثقة ثم اعتمدها."
+        },
+        "draft": {
+          "title": "حفظ كمسودة",
+          "description": "احتفظ بالبيانات في وضع المسودة."
+        },
+        "approval": {
+          "title": "إرسال للموافقة",
+          "description": "أرسل المعاملة بعد اكتمال المراجعة."
+        }
+      }
+    }
+  },
+  "settingsModule": {
+    "title": "الإعدادات",
+    "subtitle": "تفضيلات واجهة النموذج الأولي وسلوك التشغيل.",
+    "sections": {
+      "preferences": "تفضيلات العرض",
+      "workflow": "إعدادات سير العمل",
+      "exchangeRates": "أسعار الصرف"
+    },
+    "fields": {
+      "compactTable": "صفوف جدول مضغوطة",
+      "highContrast": "إبراز عالي التباين",
+      "autoSaveDraft": "حفظ تلقائي للمسودة",
+      "defaultLanding": "الصفحة الافتراضية",
+      "languagePreference": "تفضيل اللغة",
+      "numberFormat": "تنسيق الأرقام",
+      "displayCurrency": "عملة العرض",
+      "exchangeRateUpdatedAt": "آخر تحديث لأسعار الصرف"
+    },
+    "hints": {
+      "defaultLanding": "يتم تطبيقها عند فتح الصفحة الرئيسية للغة.",
+      "languagePreference": "عند الاختيار سيتم فتح النظام بهذه اللغة.",
+      "numberFormat": "يحدد تنسيق العرض المفضل للتقارير القادمة.",
+      "displayCurrency": "يحوّل ويعرض القيم بالعملة المختارة في النسخة التجريبية.",
+      "exchangeRates": "حدد قيمة كل عملة مقابل 1 ريال سعودي (SAR).",
+      "exchangeRateUpdatedAtEmpty": "لا يوجد تحديث مخصص بعد.",
+      "exchangeRateItem": "1 {currency} = ? SAR"
+    },
+    "options": {
+      "dashboard": "لوحة التحكم",
+      "transactions": "المعاملات",
+      "ocr": "مساحة OCR",
+      "auto": "تلقائي",
+      "ar": "العربية",
+      "en": "الإنجليزية",
+      "regional": "تنسيق محلي",
+      "intl": "تنسيق دولي",
+      "sar": "ريال سعودي (SAR)",
+      "usd": "دولار أمريكي (USD)",
+      "eur": "يورو (EUR)",
+      "aed": "درهم إماراتي (AED)",
+      "iqd": "دينار عراقي (IQD)"
+    },
+    "actions": {
+      "save": "حفظ الإعدادات",
+      "reset": "إعادة ضبط",
+      "resetRates": "إعادة ضبط الأسعار"
+    },
+    "messages": {
+      "saved": "تم حفظ الإعدادات بنجاح.",
+      "reset": "تمت إعادة الإعدادات للوضع الافتراضي.",
+      "saveFailed": "تعذر حفظ الإعدادات.",
+      "unsaved": "لديك تغييرات غير محفوظة.",
+      "ratesReset": "تمت إعادة أسعار الصرف للقيم الافتراضية."
+    }
+  },
+  "templatesModule": {
+    "title": "محرك الطباعة والهوية",
+    "subtitle": "منشئ قوالب مع معاينة طباعة مباشرة وأوضاع A4 وPDF للجوال.",
+    "builder": {
+      "title": "منشئ القوالب",
+      "templateName": "اسم القالب",
+      "version": "إصدار القالب",
+      "draft": "مسودة",
+      "active": "نشط",
+      "logo": "رفع الشعار",
+      "logoHint": "يدعم PNG/JPG/SVG (معاينة فقط).",
+      "noLogo": "لا يوجد شعار مرفوع",
+      "header": "محرر الترويسة",
+      "footer": "محرر التذييل",
+      "theme": "متغيرات CSS للهوية",
+      "primary": "اللون الرئيسي",
+      "accent": "اللون المساعد",
+      "paper": "لون الورق",
+      "radius": "الزوايا"
+    },
+    "preview": {
+      "title": "معاينة الطباعة",
+      "a4Mode": "وضع A4",
+      "mobileMode": "PDF للجوال",
+      "print": "طباعة",
+      "generated": "تاريخ الإنشاء",
+      "customer": "العميل",
+      "transaction": "المعاملة",
+      "branch": "الفرع",
+      "lineItem": "البند",
+      "description": "الوصف",
+      "amount": "المبلغ",
+      "total": "الإجمالي",
+      "modeOnly": "هذه معاينة واجهة فقط. خط طباعة الخلفية غير متصل حالياً."
+    },
+    "status": {
+      "draft": "مسودة",
+      "active": "نشط"
+    }
+  }
+}

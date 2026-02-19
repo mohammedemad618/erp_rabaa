@@ -1,0 +1,543 @@
+openapi: 3.1.0
+info:
+  title: Enterprise Travel ERP - Sales Path API
+  version: 1.0.0
+  description: |
+    Contract-first API for Sales Path workflow.
+    This specification is prepared during Sprint 1 foundation.
+servers:
+  - url: https://api.enterprise-travel.local
+    description: Internal API Gateway
+
+tags:
+  - name: Sales Leads
+  - name: Sales Quotes
+  - name: Sales Orders
+  - name: Sales Payments
+  - name: Sales Invoices
+
+paths:
+  /api/sales/leads:
+    post:
+      tags: [Sales Leads]
+      operationId: createSalesLead
+      summary: Create a new lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeadRequest"
+      responses:
+        "201":
+          description: Lead created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadResponse"
+        default:
+          $ref: "#/components/responses/ApiError"
+
+  /api/sales/quotes:
+    post:
+      tags: [Sales Quotes]
+      operationId: createSalesQuote
+      summary: Create a quote from lead or direct request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteRequest"
+      responses:
+        "201":
+          description: Quote created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        default:
+          $ref: "#/components/responses/ApiError"
+
+  /api/sales/orders:
+    get:
+      tags: [Sales Orders]
+      operationId: listSalesOrders
+      summary: List sales orders with workflow metadata
+      parameters:
+        - in: query
+          name: state
+          schema:
+            $ref: "#/components/schemas/SalesWorkflowState"
+        - in: query
+          name: customer
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Paged orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrderListResponse"
+        default:
+          $ref: "#/components/responses/ApiError"
+
+  /api/sales/orders/{orderId}:
+    get:
+      tags: [Sales Orders]
+      operationId: getSalesOrder
+      summary: Get one order details
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Sales order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOrder"
+        default:
+          $ref: "#/components/responses/ApiError"
+
+  /api/sales/orders/{orderId}/transition:
+    post:
+      tags: [Sales Orders]
+      operationId: transitionSalesOrderState
+      summary: Move order to next workflow state
+      description: High-risk actions require a valid PIN token.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Transition applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitionResponse"
+        default:
+          $ref: "#/components/responses/ApiError"
+
+  /api/sales/payments:
+    post:
+      tags: [Sales Payments]
+      operationId: createSalesPayment
+      summary: Register payment capture for an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "201":
+          description: Payment captured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        default:
+          $ref: "#/components/responses/ApiError"
+
+  /api/sales/orders/{orderId}/invoice:
+    post:
+      tags: [Sales Invoices]
+      operationId: issueSalesInvoice
+      summary: Generate invoice for paid order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  maxLength: 300
+      responses:
+        "201":
+          description: Invoice issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+        default:
+          $ref: "#/components/responses/ApiError"
+
+components:
+  parameters:
+    OrderId:
+      in: path
+      name: orderId
+      required: true
+      schema:
+        type: string
+      description: Sales order identifier (example: SO-000123)
+
+  responses:
+    ApiError:
+      description: API error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+  schemas:
+    SalesWorkflowState:
+      type: string
+      enum:
+        - draft
+        - ocr_reviewed
+        - pending_approval
+        - approved
+        - pending_payment
+        - paid
+        - receipt_issued
+        - refunded
+        - voided
+
+    SalesTransitionId:
+      type: string
+      enum:
+        - review_ocr
+        - request_approval
+        - approve_sale
+        - queue_payment
+        - capture_payment
+        - issue_receipt
+        - refund_sale
+        - void_sale
+
+    ApprovalState:
+      type: string
+      enum:
+        - not_required
+        - pending
+        - approved
+        - rejected
+
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, totalRows, totalPages]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalRows:
+          type: integer
+        totalPages:
+          type: integer
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    CustomerRef:
+      type: object
+      required: [id, name, phone]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+
+    SalesOrderSummary:
+      type: object
+      required:
+        [id, state, approvalState, customer, totalAmount, currency, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        state:
+          $ref: "#/components/schemas/SalesWorkflowState"
+        approvalState:
+          $ref: "#/components/schemas/ApprovalState"
+        customer:
+          $ref: "#/components/schemas/CustomerRef"
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SalesOrder:
+      allOf:
+        - $ref: "#/components/schemas/SalesOrderSummary"
+        - type: object
+          required: [items, transitionHistory]
+          properties:
+            quoteId:
+              type: string
+            pnr:
+              type: string
+            ticketNumber:
+              type: string
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/SalesOrderItem"
+            transitionHistory:
+              type: array
+              items:
+                $ref: "#/components/schemas/TransitionHistoryEntry"
+
+    SalesOrderItem:
+      type: object
+      required: [id, label, amount]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        amount:
+          type: number
+        tax:
+          type: number
+
+    TransitionHistoryEntry:
+      type: object
+      required: [id, transitionId, fromState, toState, byRole, byUser, at]
+      properties:
+        id:
+          type: string
+        transitionId:
+          $ref: "#/components/schemas/SalesTransitionId"
+        fromState:
+          $ref: "#/components/schemas/SalesWorkflowState"
+        toState:
+          $ref: "#/components/schemas/SalesWorkflowState"
+        byRole:
+          type: string
+        byUser:
+          type: string
+        at:
+          type: string
+          format: date-time
+        note:
+          type: string
+
+    SalesOrderListResponse:
+      type: object
+      required: [rows, meta]
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesOrderSummary"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    TransitionRequest:
+      type: object
+      required: [transitionId]
+      properties:
+        transitionId:
+          $ref: "#/components/schemas/SalesTransitionId"
+        note:
+          type: string
+          maxLength: 500
+        pinToken:
+          type: string
+          description: Required for high-risk transitions
+
+    TransitionResponse:
+      type: object
+      required: [orderId, fromState, toState, approvalState, requiresPin, at, transaction]
+      properties:
+        orderId:
+          type: string
+        fromState:
+          $ref: "#/components/schemas/SalesWorkflowState"
+        toState:
+          $ref: "#/components/schemas/SalesWorkflowState"
+        approvalState:
+          $ref: "#/components/schemas/ApprovalState"
+        requiresPin:
+          type: boolean
+        at:
+          type: string
+          format: date-time
+        transaction:
+          $ref: "#/components/schemas/TransactionMirror"
+
+    TransactionMirror:
+      type: object
+      required:
+        - id
+        - status
+        - approvalState
+        - pnr
+        - ticketNumber
+        - customerName
+        - totalAmount
+        - currency
+        - createdAt
+        - issuedAt
+      properties:
+        id:
+          type: string
+        status:
+          $ref: "#/components/schemas/SalesWorkflowState"
+        approvalState:
+          $ref: "#/components/schemas/ApprovalState"
+        pnr:
+          type: string
+        ticketNumber:
+          type: string
+        customerName:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        issuedAt:
+          type: string
+          format: date-time
+
+    CreateLeadRequest:
+      type: object
+      required: [customerName, customerPhone, source]
+      properties:
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        source:
+          type: string
+        notes:
+          type: string
+
+    LeadResponse:
+      type: object
+      required: [id, customerName, customerPhone, source, createdAt]
+      properties:
+        id:
+          type: string
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        source:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateQuoteRequest:
+      type: object
+      required: [customerId, itinerary, currency]
+      properties:
+        customerId:
+          type: string
+        itinerary:
+          type: string
+        currency:
+          type: string
+        baseAmount:
+          type: number
+        taxAmount:
+          type: number
+        serviceFee:
+          type: number
+
+    QuoteResponse:
+      type: object
+      required: [id, customerId, totalAmount, currency, createdAt]
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreatePaymentRequest:
+      type: object
+      required: [orderId, amount, currency, method]
+      properties:
+        orderId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        method:
+          type: string
+          enum: [cash, card, bank]
+        reference:
+          type: string
+
+    PaymentResponse:
+      type: object
+      required: [id, orderId, amount, currency, method, createdAt]
+      properties:
+        id:
+          type: string
+        orderId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        method:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    InvoiceResponse:
+      type: object
+      required: [invoiceId, orderId, issuedAt]
+      properties:
+        invoiceId:
+          type: string
+        orderId:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time

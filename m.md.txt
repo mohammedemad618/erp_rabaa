@@ -1,0 +1,510 @@
+Technical Frontend Architecture Document
+Project: Rabea Al Ahlam – Enterprise Travel ERP
+
+Version: 1.0
+Scope: Frontend Only
+
+1️⃣ Product Vision (Frontend Perspective)
+
+الواجهة ليست مجرد شاشة إدخال بيانات.
+
+الواجهة يجب أن تكون:
+
+Enterprise-grade
+
+High-throughput optimized
+
+Financially structured
+
+Workflow-driven
+
+Audit-ready
+
+Multilingual (RTL-ready)
+
+Keyboard-first
+
+Scalable to 1000+ concurrent users
+
+2️⃣ Frontend Technology Stack (Enterprise Standard)
+Core Stack
+
+Framework: Next.js 16 (App Router)
+
+Language: TypeScript (Strict Mode Enabled)
+
+UI System: TailwindCSS 4 + Radix UI
+
+State Management: Zustand / Redux Toolkit
+
+Form Handling: React Hook Form
+
+Validation: Zod
+
+Tables: TanStack Table (Enterprise grid patterns)
+
+Charts: Recharts / ECharts
+
+PDF Viewer: PDF.js
+
+Document Highlight Overlay: Canvas Layer
+
+i18n: next-intl
+
+RTL Handling: Logical CSS + dir attribute
+
+Print Engine: Native HTML + @media print
+
+Access Control UI: Role-based UI gating layer
+
+Keyboard Engine: Custom hotkey manager
+
+3️⃣ Frontend System Architecture
+3.1 Layered Architecture
+
+Presentation Layer
+⬇
+Feature Modules
+⬇
+UI Services Layer
+⬇
+Domain Models (Client Side)
+⬇
+Utility Layer
+
+3.2 Feature-Based Folder Structure
+/app
+/modules
+   /transactions
+   /accounting
+   /bsp
+   /crm
+   /treasury
+   /reports
+   /expenses
+   /audit
+   /templates
+/components
+/services
+/hooks
+/utils
+/types
+
+4️⃣ Enterprise Financial UX Architecture
+
+نحن نبني واجهة محاسبية حقيقية، لذلك نحتاج:
+
+4.1 Transaction as Financial Entity (Client Model)
+
+كل Transaction في الواجهة يجب أن يحتوي على:
+
+Ticket Data
+
+Sales Data
+
+Payment Data
+
+Accounting Preview
+
+Approval Timeline
+
+Audit Metadata
+
+الواجهة يجب أن تعرض:
+
+🔹 Accounting Impact Preview Panel
+(عرض القيود المتوقعة قبل الإرسال)
+
+مثال UX:
+
+Debit: Cash 1,250
+Credit: Ticket Revenue 1,100
+Credit: Tax Payable 150
+
+
+⚠ هذا عرض فقط — بدون تنفيذ Backend.
+
+5️⃣ Core Enterprise Modules (Frontend Scope)
+🟢 Module 1: Transaction Engine
+Screens
+
+Transaction List (Enterprise Grid)
+
+Transaction Details (Tabbed Layout)
+
+Accounting Impact Preview
+
+Approval Timeline
+
+Document Viewer
+
+Refund Wizard
+
+UX Requirements
+
+Virtualized Table
+
+Multi-column filtering
+
+Saved filters
+
+Batch actions
+
+Keyboard navigation
+
+🟢 Module 2: Accounting Console (Frontend View Only)
+
+هدفه عرض:
+
+Journal Preview
+
+Ledger View (Read-only UI simulation)
+
+Chart of Accounts Browser
+
+Financial Impact Panel
+
+Screens
+
+Journal Entries (Filterable Grid)
+
+General Ledger Viewer
+
+Trial Balance Viewer
+
+P&L Viewer
+
+Balance Sheet Viewer
+
+⚠ كلها عرض واجهة فقط
+
+🟢 Module 3: BSP Reconciliation Interface
+
+Screens:
+
+BSP Sales Comparison View
+
+Mismatch Detector UI
+
+Airline Statement Viewer
+
+Settlement Timeline
+
+UX Features:
+
+Split view: System vs BSP Statement
+
+Highlight discrepancies
+
+Auto-group by Airline
+
+🟢 Module 4: Treasury Management
+
+Screens:
+
+Cash Register Dashboard
+
+POS Terminal Summary
+
+Bank Account Overview
+
+Bank Reconciliation UI (Manual match UX)
+
+UX:
+
+Drag-to-match transactions
+
+Highlight unmatched rows
+
+Real-time total difference indicator
+
+🟢 Module 5: CRM Enterprise View
+
+Customer 360 Profile
+
+Booking History Timeline
+
+Credit Limit Indicator
+
+Aging Visualization Chart
+
+🟢 Module 6: Expense & Cost Centers
+
+Expense Entry
+
+Approval Routing UI
+
+Cost Center Selector
+
+Department-based filter
+
+🟢 Module 7: Reporting & BI Dashboard
+
+Enterprise dashboard must include:
+
+Sales heatmap
+
+Margin by Airline
+
+Margin by Employee
+
+Cash Flow Simulation
+
+KPI Cards
+
+UX:
+
+Drill-down charts
+
+Date range presets
+
+Export to PDF
+
+Export to Excel (UI only trigger)
+
+6️⃣ OCR Enterprise UX Architecture
+Layout
+
+Left:
+PDF Viewer
+
+Right:
+Extracted Structured Form
+
+Top:
+Confidence Score Indicator
+
+UX Features:
+
+Field-to-document highlight
+
+Low-confidence auto-focus
+
+Hotkeys:
+Alt + N → Next low confidence
+Alt + A → Accept field
+Alt + D → Open document zoom
+
+7️⃣ Role-Based UI Control Layer
+
+Frontend Permission Engine:
+
+Each action button checks:
+
+User Role
+
+Transaction Status
+
+Approval State
+
+Button States:
+
+Enabled
+
+Disabled (with reason tooltip)
+
+Requires Approval
+
+Requires PIN Re-auth
+
+8️⃣ Enterprise Table UX Standards
+
+Sticky header
+
+Column resizing
+
+Column pinning
+
+Multi-sort
+
+Server-like pagination (UI only)
+
+Row detail expansion
+
+9️⃣ Global Search Architecture
+
+Search Bar must support:
+
+PNR (6 char)
+
+Ticket Number (13 digits)
+
+Customer Phone
+
+Customer Name
+
+UX:
+
+Instant result dropdown
+
+Type-aware validation
+
+Highlight matching segment
+
+🔟 Localization & RTL Architecture
+Requirements
+
+Full Arabic translation
+
+dir="rtl" support
+
+Logical CSS (margin-inline-start)
+
+<bdi> usage for mixed text
+
+Number formatting per locale
+
+Currency formatting per branch
+
+11️⃣ Print & Branding Engine
+
+Screens:
+
+Template Builder
+
+Print Preview
+
+A4 Layout Mode
+
+Mobile PDF Mode
+
+Features:
+
+Logo upload
+
+Header/Footer editor
+
+CSS variables for theme
+
+Versioning indicator (Draft / Active)
+
+Print CSS:
+
+@media print
+@page
+page-break-inside: avoid
+
+12️⃣ Accessibility (WCAG 2.2)
+
+Focus visible
+
+Target size minimum
+
+Keyboard-only workflow
+
+Redundant entry reduction
+
+ARIA labels for tables
+
+Screen reader support
+
+13️⃣ Audit & Explainability Layer
+
+Every transaction must show:
+
+Timeline
+
+Who changed what
+
+Before/After view
+
+Linked documents
+
+Approval steps
+
+UX Pattern:
+
+Expandable activity log
+Color-coded actions
+
+14️⃣ Enterprise UX Performance Requirements
+
+Table must handle 10k+ rows (virtualization)
+
+OCR screen load < 2 seconds
+
+Interaction latency < 150ms
+
+Print render < 1 second
+
+15️⃣ Design System Specification
+
+Color System:
+
+Primary: Deep Blue (Trust)
+Success: Emerald
+Warning: Amber
+Danger: Red
+Finance: Dark Gray
+
+Typography:
+
+Inter / IBM Plex Sans Arabic
+
+Spacing:
+
+8px grid system
+
+Component Standards:
+
+Consistent Button Hierarchy
+
+Status Pill System
+
+Badge System
+
+Skeleton Loaders
+
+16️⃣ Security UX
+
+High Risk Actions:
+
+Refund
+
+Void
+
+Delete
+
+Financial override
+
+Require:
+
+PIN modal
+
+Confirmation dialog
+
+Action summary preview
+
+17️⃣ Enterprise Workflow Model
+
+Transaction State Machine (UI Representation)
+
+Draft
+⬇
+OCR Reviewed
+⬇
+Pending Approval
+⬇
+Approved
+⬇
+Pending Payment
+⬇
+Paid
+⬇
+Receipt Issued
+⬇
+Refunded / Voided
+
+UI must visually represent state transitions.
+
+18️⃣ Scalability Considerations (Frontend)
+
+Modular loading
+
+Dynamic imports
+
+Lazy chart loading
+
+Code splitting
+
+Memoized components

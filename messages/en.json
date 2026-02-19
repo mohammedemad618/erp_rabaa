@@ -1,0 +1,802 @@
+{
+  "app": {
+    "name": "Rabea Al Ahlam",
+    "product": "Enterprise Travel ERP",
+    "subtitle": "Financially structured, workflow-driven frontend baseline"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "transactions": "Transactions",
+    "accounting": "Accounting",
+    "bsp": "BSP Reconciliation",
+    "treasury": "Treasury",
+    "crm": "CRM",
+    "expenses": "Expenses",
+    "reports": "Reports",
+    "ocr": "OCR Workspace",
+    "templates": "Templates"
+  },
+  "navGroups": {
+    "control": "Control Center",
+    "finance": "Finance Operations",
+    "customer": "Customer & Analytics",
+    "documents": "Documents & Templates",
+    "ocr": "OCR Operations"
+  },
+  "navSubgroups": {
+    "overview": "Overview",
+    "salesFlow": "Sales Flow",
+    "accountingFlow": "Accounting Flow",
+    "reconciliation": "Reconciliation",
+    "relations": "Customer Relations",
+    "intelligence": "BI & Insights",
+    "automation": "Document Automation",
+    "publishing": "Print & Branding",
+    "ocrOperations": "OCR Center"
+  },
+  "common": {
+    "search": "Search",
+    "status": "Status",
+    "all": "All",
+    "language": "Language",
+    "role": "Role",
+    "moduleUnderConstruction": "Module UI baseline is ready. Detailed workflows are next.",
+    "noResults": "No matching records found."
+  },
+  "roles": {
+    "admin": "Admin",
+    "finance_manager": "Finance Manager",
+    "agent": "Agent",
+    "auditor": "Auditor"
+  },
+  "dashboard": {
+    "title": "Enterprise Control Tower",
+    "description": "Operational and financial snapshot for high-throughput travel workflows.",
+    "kpi": {
+      "salesToday": "Sales Today",
+      "pendingApprovals": "Pending Approvals",
+      "openRefunds": "Open Refunds",
+      "ocrLatency": "OCR Latency"
+    },
+    "cta": "Open Transaction Engine"
+  },
+  "transactions": {
+    "title": "Transaction Engine",
+    "subtitle": "Virtualized enterprise grid with accounting impact preview and approval timeline.",
+    "filters": {
+      "quickPendingApproval": "Pending Approval",
+      "quickHighValue": "High Value",
+      "quickCashOnly": "Cash Only"
+    },
+    "table": {
+      "id": "ID",
+      "pnr": "PNR",
+      "ticket": "Ticket #",
+      "customer": "Customer",
+      "airline": "Airline",
+      "total": "Total",
+      "status": "Status",
+      "createdAt": "Created At"
+    },
+    "statusValues": {
+      "draft": "Draft",
+      "ocr_reviewed": "OCR Reviewed",
+      "pending_approval": "Pending Approval",
+      "approved": "Approved",
+      "pending_payment": "Pending Payment",
+      "paid": "Paid",
+      "receipt_issued": "Receipt Issued",
+      "refunded": "Refunded",
+      "voided": "Voided"
+    },
+    "panel": {
+      "accountingImpact": "Accounting Impact Preview",
+      "approvalTimeline": "Approval Timeline",
+      "auditMeta": "Audit Metadata",
+      "createdBy": "Created by",
+      "updatedBy": "Updated by"
+    },
+    "actions": {
+      "batchApprove": "Batch Approve",
+      "exportPdf": "Export PDF",
+      "refund": "Refund",
+      "void": "Void",
+      "requiresPin": "Requires PIN re-auth",
+      "approvalRequired": "Requires approval state"
+    },
+    "hotkeys": {
+      "title": "Hotkeys",
+      "focusSearch": "/ focus search",
+      "nextRow": "J next row",
+      "prevRow": "K previous row",
+      "nextLowConfidence": "Alt + N next low confidence",
+      "acceptField": "Alt + A accept field",
+      "zoomDocument": "Alt + D open zoom"
+    }
+  },
+  "salesFlow": {
+    "title": "Sales Workflow Control",
+    "subtitle": "Rule-based state transition view for the current transaction.",
+    "currentState": "Current State",
+    "sla": "SLA Status",
+    "slaElapsed": "Elapsed: {hours}h",
+    "slaTarget": "Target: {hours}h",
+    "level": {
+      "ok": "On Track",
+      "warning": "At Risk",
+      "critical": "Breached"
+    },
+    "actions": {
+      "review_ocr": "Review OCR",
+      "request_approval": "Request Approval",
+      "approve_sale": "Approve Sale",
+      "queue_payment": "Queue Payment",
+      "capture_payment": "Capture Payment",
+      "issue_receipt": "Issue Receipt",
+      "refund_sale": "Refund Sale",
+      "void_sale": "Void Sale"
+    },
+    "nextState": "Next State",
+    "risk": {
+      "normal": "Normal Risk",
+      "high": "High Risk"
+    },
+    "allowed": "Allowed",
+    "blocked": "Blocked",
+    "ready": "Ready to execute",
+    "notReady": "Not ready",
+    "pinRequired": "PIN required",
+    "execute": "Execute",
+    "executeWithPin": "Execute with PIN",
+    "pinTitle": "PIN Re-authentication",
+    "pinSubtitle": "This transition is marked high-risk and requires a PIN.",
+    "pinLabel": "Enter PIN",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "terminal": "No further transitions are available for this terminal state.",
+    "messages": {
+      "executed": "{action} completed successfully.",
+      "executedWithPin": "{action} completed with PIN verification.",
+      "invalidPin": "Invalid PIN. Use the correct PIN and try again.",
+      "batchResult": "Batch approval applied: {success} succeeded, {blocked} blocked, {failed} failed.",
+      "apiFailed": "Workflow API request failed. Please try again."
+    },
+    "reasons": {
+      "role_not_allowed": "Current role is not permitted for this action.",
+      "approval_required": "Transaction must be approved before this action.",
+      "state_not_allowed": "This action is not valid for the current state."
+    }
+  },
+  "accounting": {
+    "title": "Accounting Console",
+    "subtitle": "Journal preview, ledger explorer, trial balance and financial views powered by transaction data.",
+    "tabs": {
+      "journal": "Journal Entries",
+      "ledger": "General Ledger",
+      "trialBalance": "Trial Balance",
+      "pnl": "Profit & Loss",
+      "balanceSheet": "Balance Sheet"
+    },
+    "filters": {
+      "searchPlaceholder": "Search entry, account, reference, airline, or agent",
+      "allBranches": "All Branches",
+      "periodAll": "All Time",
+      "period30": "Last 30 Days",
+      "period7": "Last 7 Days",
+      "showing": "Filtered Rows"
+    },
+    "kpi": {
+      "posted": "Posted Entries",
+      "draft": "Draft Entries",
+      "debit": "Total Debit",
+      "credit": "Total Credit",
+      "imbalance": "Imbalance"
+    },
+    "journal": {
+      "entry": "Entry",
+      "date": "Date",
+      "reference": "Reference",
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit",
+      "branch": "Branch",
+      "airline": "Airline",
+      "status": "Status",
+      "rows": "Rows",
+      "empty": "No journal rows found for current filters.",
+      "stateValues": {
+        "draft": "Draft",
+        "posted": "Posted",
+        "reversed": "Reversed"
+      }
+    },
+    "ledger": {
+      "account": "Account",
+      "running": "Running Balance",
+      "movement": "Net Movement",
+      "debitTotal": "Total Debit",
+      "creditTotal": "Total Credit",
+      "empty": "No ledger activity for this account and filter."
+    },
+    "trialBalance": {
+      "account": "Account",
+      "category": "Category",
+      "net": "Net",
+      "empty": "No trial balance rows for current filters."
+    },
+    "pnl": {
+      "revenue": "Revenue",
+      "expense": "Expense",
+      "netIncome": "Net Income",
+      "margin": "Margin",
+      "branchBreakdown": "Revenue vs Expense by Branch",
+      "airlineBreakdown": "Net Margin by Airline"
+    },
+    "balanceSheet": {
+      "assets": "Assets",
+      "liabilities": "Liabilities",
+      "equity": "Equity",
+      "balance": "Balance",
+      "structure": "Structure"
+    },
+    "categories": {
+      "asset": "Asset",
+      "liability": "Liability",
+      "equity": "Equity",
+      "revenue": "Revenue",
+      "expense": "Expense"
+    }
+  },
+  "bsp": {
+    "title": "BSP Reconciliation",
+    "subtitle": "Split-view reconciliation between system sales and BSP statements with discrepancy detection.",
+    "filters": {
+      "searchPlaceholder": "Search ticket, PNR, transaction ID, or statement ID",
+      "allAirlines": "All Airlines",
+      "allMismatchTypes": "All Mismatch Types"
+    },
+    "kpi": {
+      "systemSales": "System Sales",
+      "bspSales": "BSP Statement Rows",
+      "mismatches": "Detected Mismatches",
+      "variance": "Net Variance"
+    },
+    "table": {
+      "ticket": "Ticket #",
+      "pnr": "PNR",
+      "airline": "Airline",
+      "total": "Total",
+      "status": "Status",
+      "statementId": "Statement ID",
+      "settlementDate": "Settlement Date"
+    },
+    "split": {
+      "systemTitle": "System Sales View",
+      "statementTitle": "BSP Statement View"
+    },
+    "mismatch": {
+      "title": "Mismatch Detector",
+      "type": "Type",
+      "systemAmount": "System Amount",
+      "bspAmount": "BSP Amount",
+      "delta": "Delta",
+      "severity": "Severity",
+      "types": {
+        "missing_in_bsp": "Missing in BSP",
+        "extra_in_bsp": "Extra in BSP",
+        "amount_mismatch": "Amount Mismatch",
+        "tax_mismatch": "Tax Mismatch",
+        "status_mismatch": "Status Mismatch"
+      },
+      "severityValues": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
+    },
+    "details": {
+      "title": "Selected Ticket Details",
+      "empty": "Select any row from either side to inspect reconciliation details.",
+      "systemRecord": "System Record",
+      "statementRecord": "BSP Statement Record",
+      "discrepancies": "Detected Discrepancies",
+      "notAvailable": "No record available on this side.",
+      "noMismatch": "No mismatch found for this ticket."
+    },
+    "airlineSummary": {
+      "title": "Airline Group Summary",
+      "systemCount": "System",
+      "bspCount": "BSP",
+      "mismatchCount": "Mismatches",
+      "variance": "Variance"
+    },
+    "timeline": {
+      "title": "Settlement Timeline",
+      "subtitle": "System amount vs BSP amount over settlement windows.",
+      "system": "System",
+      "bsp": "BSP",
+      "delta": "Delta"
+    },
+    "empty": {
+      "system": "No system rows found for current filters.",
+      "statement": "No BSP statement rows found for current filters.",
+      "mismatch": "No mismatches detected for current filters.",
+      "airlineSummary": "No airline summary rows available."
+    }
+  },
+  "treasury": {
+    "title": "Treasury Management",
+    "subtitle": "Cash, POS, and bank reconciliation workspace with manual drag-to-match controls.",
+    "filters": {
+      "searchPlaceholder": "Search by reference or description",
+      "allAccounts": "All Bank Accounts",
+      "reset": "Reset Filters"
+    },
+    "kpi": {
+      "cashIn": "Cash In",
+      "cashOut": "Cash Out",
+      "cashNet": "Cash Net",
+      "posPending": "POS Pending",
+      "bankVariance": "Bank Variance",
+      "unmatched": "Unmatched Sys/Stmt"
+    },
+    "table": {
+      "date": "Date",
+      "branch": "Branch",
+      "direction": "Direction",
+      "amount": "Amount",
+      "status": "Status",
+      "reference": "Reference"
+    },
+    "directions": {
+      "in": "Inflow",
+      "out": "Outflow"
+    },
+    "cashDashboard": {
+      "title": "Cash Register Dashboard"
+    },
+    "posSummary": {
+      "title": "POS Terminal Summary",
+      "terminal": "Terminal",
+      "transactions": "Transactions",
+      "gross": "Gross",
+      "pending": "Pending"
+    },
+    "bankOverview": {
+      "title": "Bank Account Overview",
+      "ledger": "Ledger Balance",
+      "statement": "Statement Balance",
+      "available": "Available Balance",
+      "lastSync": "Last Sync"
+    },
+    "reconciliation": {
+      "title": "Manual Bank Reconciliation",
+      "subtitle": "Drag from system rows and drop on statement rows to create a match.",
+      "realtimeDelta": "Real-time Difference (Unmatched)",
+      "systemUnmatched": "System Unmatched",
+      "statementUnmatched": "Statement Unmatched",
+      "matchedPairs": "Matched Pairs",
+      "linkedTo": "Linked To",
+      "delta": "Delta",
+      "action": "Action",
+      "unmatch": "Unmatch"
+    },
+    "empty": {
+      "cash": "No cash activity for current filters.",
+      "pos": "No POS summary for current filters.",
+      "systemUnmatched": "No unmatched system rows.",
+      "statementUnmatched": "No unmatched statement rows.",
+      "matchedPairs": "No matched pairs yet."
+    }
+  },
+  "crmModule": {
+    "title": "CRM Enterprise View",
+    "subtitle": "Customer 360 profile with booking timeline, credit monitoring, and receivables aging.",
+    "filters": {
+      "searchPlaceholder": "Search customer name, phone, or preferred airline",
+      "allRiskLevels": "All Risk Levels"
+    },
+    "kpi": {
+      "customers": "Customers",
+      "totalSales": "Total Sales",
+      "outstanding": "Outstanding",
+      "highRisk": "High Risk Accounts"
+    },
+    "customers": {
+      "title": "Customer Portfolio",
+      "bookings": "bookings"
+    },
+    "segment": {
+      "starter": "Starter",
+      "growth": "Growth",
+      "strategic": "Strategic"
+    },
+    "risk": {
+      "low": "Low Risk",
+      "medium": "Medium Risk",
+      "high": "High Risk"
+    },
+    "profile": {
+      "preferredAirline": "Preferred Airline",
+      "lastBooking": "Last Booking",
+      "totalBookings": "Total Bookings",
+      "avgTicket": "Average Ticket",
+      "branches": "Branches"
+    },
+    "credit": {
+      "title": "Credit Limit Indicator",
+      "limit": "Credit Limit",
+      "exposure": "Current Exposure",
+      "available": "Available Credit",
+      "utilization": "Utilization"
+    },
+    "aging": {
+      "title": "Aging Visualization"
+    },
+    "timeline": {
+      "title": "Booking History Timeline",
+      "date": "Date",
+      "ticket": "Ticket",
+      "airline": "Airline",
+      "agent": "Agent",
+      "amount": "Amount",
+      "status": "Status"
+    },
+    "empty": {
+      "customers": "No customers found for current filters.",
+      "selection": "Select a customer from the list to open Customer 360 view.",
+      "timeline": "No booking timeline items available."
+    }
+  },
+  "reportsModule": {
+    "title": "Reporting & BI Dashboard",
+    "subtitle": "Sales heatmap, margin analytics, and cash-flow simulation with interactive drill-down.",
+    "filters": {
+      "searchPlaceholder": "Search by airline, employee, or transaction ID",
+      "allBranches": "All Branches",
+      "preset7": "Last 7 Days",
+      "preset30": "Last 30 Days",
+      "preset90": "Last 90 Days",
+      "presetAll": "All Time"
+    },
+    "export": {
+      "pdf": "Export PDF",
+      "excel": "Export Excel",
+      "pdfTriggered": "PDF export has been queued (UI trigger only).",
+      "excelTriggered": "Excel export has been queued (UI trigger only)."
+    },
+    "kpi": {
+      "grossSales": "Gross Sales",
+      "margin": "Margin",
+      "marginPct": "Margin %",
+      "avgTicket": "Avg Ticket",
+      "refundRate": "Refund Rate",
+      "pendingCollection": "Pending Collection"
+    },
+    "heatmap": {
+      "title": "Sales Heatmap",
+      "subtitle": "Revenue concentration by weekday and time window.",
+      "day": "Day",
+      "hours": {
+        "00_05": "00:00-05:59",
+        "06_11": "06:00-11:59",
+        "12_17": "12:00-17:59",
+        "18_23": "18:00-23:59"
+      },
+      "weekdays": {
+        "0": "Sunday",
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday"
+      }
+    },
+    "charts": {
+      "marginByAirline": "Margin by Airline",
+      "marginByEmployee": "Margin by Employee",
+      "cashFlowActual": "Cash Flow (Actual)",
+      "cashFlowSimulation": "Cash Flow (Simulation)",
+      "margin": "Margin",
+      "net": "Net",
+      "cumulative": "Cumulative",
+      "inflow": "Inflow",
+      "outflow": "Outflow",
+      "clickToDrill": "Click a bar to open drill-down rows."
+    },
+    "simulation": {
+      "growth": "Sales Growth Scenario",
+      "cost": "Cost Inflation Scenario",
+      "forecast7": "7-day Forecast Net"
+    },
+    "drill": {
+      "title": "Drill-down",
+      "empty": "Select any airline or employee bar to inspect contributing transactions.",
+      "clear": "Clear Drill",
+      "date": "Date",
+      "transaction": "Transaction",
+      "dimension": "Dimension",
+      "gross": "Gross",
+      "margin": "Margin",
+      "status": "Status",
+      "noRows": "No transactions found for selected drill filter."
+    }
+  },
+  "expenseModule": {
+    "title": "Expense & Cost Centers",
+    "subtitle": "Expense entry workflow with department routing, cost-center controls, and approval actions.",
+    "filters": {
+      "searchPlaceholder": "Search by ID, vendor, employee, or description",
+      "allDepartments": "All Departments",
+      "allStatuses": "All Statuses"
+    },
+    "kpi": {
+      "totalAmount": "Total Amount",
+      "pendingCount": "Pending Approvals",
+      "approvedAmount": "Approved Amount",
+      "rejectedAmount": "Rejected Amount",
+      "overBudget": "Over-budget Centers"
+    },
+    "entry": {
+      "title": "Expense Entry",
+      "date": "Date",
+      "department": "Department",
+      "costCenter": "Cost Center",
+      "category": "Category",
+      "description": "Description",
+      "vendor": "Vendor",
+      "employee": "Employee",
+      "amount": "Amount",
+      "paymentMethod": "Payment Method",
+      "submit": "Submit Expense"
+    },
+    "departments": {
+      "sales": "Sales",
+      "operations": "Operations",
+      "finance": "Finance",
+      "it": "IT",
+      "hr": "HR"
+    },
+    "paymentMethods": {
+      "cash": "Cash",
+      "card": "Card",
+      "bank": "Bank Transfer"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending_manager": "Pending Manager",
+      "pending_finance": "Pending Finance",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "routeStatus": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "costCenters": {
+      "title": "Cost Center Utilization"
+    },
+    "routing": {
+      "title": "Approval Routing",
+      "approveStep": "Approve Next Step",
+      "reject": "Reject Expense"
+    },
+    "table": {
+      "title": "Expense Register",
+      "id": "ID",
+      "date": "Date",
+      "department": "Department",
+      "costCenter": "Cost Center",
+      "employee": "Employee",
+      "amount": "Amount",
+      "status": "Status"
+    },
+    "messages": {
+      "created": "Expense entry created and sent to manager approval.",
+      "approved": "Approval step completed.",
+      "rejected": "Expense has been rejected.",
+      "invalidCostCenter": "Selected cost center is invalid."
+    },
+    "empty": {
+      "selection": "Select an expense row to inspect approval routing.",
+      "rows": "No expenses found for current filters."
+    }
+  },
+  "ocrModule": {
+    "title": "OCR Workspace",
+    "subtitle": "Document-to-field validation workspace with confidence-guided review and keyboard-first actions.",
+    "filters": {
+      "searchPlaceholder": "Search by file name, transaction ID, or branch"
+    },
+    "top": {
+      "overallConfidence": "Average Confidence",
+      "documents": "Documents",
+      "lowConfidenceDocs": "Low-confidence Docs",
+      "unresolvedFields": "Unresolved Fields",
+      "criticalDocs": "Critical Docs"
+    },
+    "viewer": {
+      "title": "Document Viewer",
+      "zoom": "Zoom"
+    },
+    "fields": {
+      "title": "Extracted Structured Fields",
+      "zoom": "Toggle Zoom",
+      "accepted": "Accepted",
+      "pending": "Pending Review"
+    },
+    "hotkeys": {
+      "title": "Hotkeys",
+      "nextLow": "Alt + N: Next low-confidence field",
+      "acceptField": "Alt + A: Accept selected field",
+      "zoomDoc": "Alt + D: Toggle document zoom"
+    },
+    "meta": {
+      "branch": "Branch",
+      "createdAt": "Created At"
+    },
+    "messages": {
+      "alreadyAccepted": "Field is already accepted.",
+      "fieldAccepted": "Selected field marked as accepted.",
+      "noLowConfidence": "No remaining low-confidence fields.",
+      "focusedNext": "Moved to next low-confidence field.",
+      "zoom140": "Zoom set to 140%.",
+      "zoom180": "Zoom set to 180%.",
+      "zoom100": "Zoom reset to 100%.",
+      "uploadSuccess": "{count} document(s) uploaded and extracted successfully.",
+      "uploadPartial": "Upload completed: {success} succeeded, {failed} failed.",
+      "uploadFailed": "Unable to extract OCR from uploaded file(s)."
+    },
+    "empty": {
+      "document": "No OCR document available for this filter.",
+      "fields": "No extracted fields found.",
+      "section": "No documents are available in the selected OCR section."
+    },
+    "sections": {
+      "title": "OCR Sections",
+      "workspace": "Workspace",
+      "workspaceDescription": "View all OCR documents matching your filters.",
+      "queue": "Review Queue",
+      "queueDescription": "Focus on documents with low-confidence fields.",
+      "quality": "Quality Desk",
+      "qualityDescription": "Track critical extraction quality issues."
+    },
+    "quality": {
+      "title": "OCR Quality by Branch",
+      "subtitle": "Monitor workload and extraction quality per branch.",
+      "branch": "Branch",
+      "documents": "Documents",
+      "unresolved": "Unresolved Fields",
+      "confidence": "Avg Confidence",
+      "empty": "No quality records available for this filter."
+    },
+    "upload": {
+      "help": "Upload OCR files (PDF, JPG, PNG, WEBP, TXT) to extract fields through API.",
+      "button": "Upload Documents",
+      "processing": "Processing..."
+    },
+    "entryFlow": {
+      "title": "Data Entry Scenario (No Login)",
+      "steps": {
+        "upload": {
+          "title": "Upload document",
+          "description": "Upload ticket/invoice files to OCR section."
+        },
+        "review": {
+          "title": "Review extracted fields",
+          "description": "Open each document and inspect extracted values."
+        },
+        "correct": {
+          "title": "Correct low confidence",
+          "description": "Edit low-confidence fields then accept them."
+        },
+        "draft": {
+          "title": "Save as draft",
+          "description": "Keep transaction in draft after validation."
+        },
+        "approval": {
+          "title": "Send for approval",
+          "description": "Route validated transaction to approval queue."
+        }
+      }
+    }
+  },
+  "settingsModule": {
+    "title": "Settings",
+    "subtitle": "Prototype-level preferences for display and workflow behavior.",
+    "sections": {
+      "preferences": "Preferences",
+      "workflow": "Workflow Defaults",
+      "exchangeRates": "Exchange Rates"
+    },
+    "fields": {
+      "compactTable": "Compact table rows",
+      "highContrast": "High-contrast highlights",
+      "autoSaveDraft": "Auto-save draft data",
+      "defaultLanding": "Default landing page",
+      "languagePreference": "Language preference",
+      "numberFormat": "Number format",
+      "displayCurrency": "Display currency",
+      "exchangeRateUpdatedAt": "Last exchange rates update"
+    },
+    "hints": {
+      "defaultLanding": "Applied when opening the main locale page.",
+      "languagePreference": "If selected, the app opens using this language.",
+      "numberFormat": "Controls preferred display format for future reporting widgets.",
+      "displayCurrency": "Converts and displays amounts using the selected demo currency.",
+      "exchangeRates": "Set each currency value against 1 Saudi Riyal (SAR).",
+      "exchangeRateUpdatedAtEmpty": "No custom update yet.",
+      "exchangeRateItem": "1 {currency} = ? SAR"
+    },
+    "options": {
+      "dashboard": "Dashboard",
+      "transactions": "Transactions",
+      "ocr": "OCR Workspace",
+      "auto": "Auto",
+      "ar": "Arabic",
+      "en": "English",
+      "regional": "Regional format",
+      "intl": "International format",
+      "sar": "Saudi Riyal (SAR)",
+      "usd": "US Dollar (USD)",
+      "eur": "Euro (EUR)",
+      "aed": "UAE Dirham (AED)",
+      "iqd": "Iraqi Dinar (IQD)"
+    },
+    "actions": {
+      "save": "Save Settings",
+      "reset": "Reset",
+      "resetRates": "Reset Rates"
+    },
+    "messages": {
+      "saved": "Settings saved successfully.",
+      "reset": "Settings were reset to defaults.",
+      "saveFailed": "Unable to save settings.",
+      "unsaved": "You have unsaved changes.",
+      "ratesReset": "Exchange rates were reset to defaults."
+    }
+  },
+  "templatesModule": {
+    "title": "Print & Branding Engine",
+    "subtitle": "Template builder with live print preview, A4/mobile modes, and brand controls.",
+    "builder": {
+      "title": "Template Builder",
+      "templateName": "Template Name",
+      "version": "Versioning",
+      "draft": "Draft",
+      "active": "Active",
+      "logo": "Logo Upload",
+      "logoHint": "PNG/JPG/SVG accepted. Preview only.",
+      "noLogo": "No logo uploaded",
+      "header": "Header Editor",
+      "footer": "Footer Editor",
+      "theme": "Theme CSS Variables",
+      "primary": "Primary",
+      "accent": "Accent",
+      "paper": "Paper",
+      "radius": "Radius"
+    },
+    "preview": {
+      "title": "Print Preview",
+      "a4Mode": "A4 Layout",
+      "mobileMode": "Mobile PDF",
+      "print": "Print",
+      "generated": "Generated",
+      "customer": "Customer",
+      "transaction": "Transaction",
+      "branch": "Branch",
+      "lineItem": "Line Item",
+      "description": "Description",
+      "amount": "Amount",
+      "total": "Total",
+      "modeOnly": "Preview mode only. Backend print pipeline is not connected yet."
+    },
+    "status": {
+      "draft": "Draft",
+      "active": "Active"
+    }
+  }
+}

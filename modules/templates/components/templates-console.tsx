@@ -11,6 +11,7 @@ import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ChangeEvent, CSSProperties } from "react";
+import { ErpPageHeader, ErpPageLayout } from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { formatCurrency, formatDate } from "@/utils/format";
@@ -69,13 +70,10 @@ export function TemplatesConsole({ dataset }: TemplatesConsoleProps) {
   const totalAmount = snapshot.totalAmount;
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tTemplates("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tTemplates("subtitle")}</p>
-      </header>
+    <ErpPageLayout>
+      <ErpPageHeader title={tTemplates("title")} description={tTemplates("subtitle")} />
 
-      <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+      <div className="col-span-12 grid gap-4 xl:grid-cols-[360px_1fr]">
         <aside className="template-builder-panel surface-card no-print p-4">
           <h3 className="text-sm font-semibold text-finance">{tTemplates("builder.title")}</h3>
 
@@ -361,6 +359,6 @@ export function TemplatesConsole({ dataset }: TemplatesConsoleProps) {
           </div>
         </section>
       </div>
-    </section>
+    </ErpPageLayout>
   );
 }

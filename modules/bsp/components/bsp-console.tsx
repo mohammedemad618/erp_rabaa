@@ -4,6 +4,12 @@ import { Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import {
+  ErpKpiGrid,
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import { formatCurrency } from "@/utils/format";
 import type { BspDataset, MismatchType } from "../types";
 import { AirlineSummary } from "./airline-summary";
@@ -152,12 +158,14 @@ export function BspConsole({ dataset }: BspConsoleProps) {
   ];
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tBsp("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tBsp("subtitle")}</p>
+    <ErpPageLayout>
+      <ErpPageHeader title={tBsp("title")} description={tBsp("subtitle")} />
 
-        <div className="no-print mt-4 grid gap-2 md:grid-cols-[1.4fr_1fr_1fr]">
+      <ErpSection
+        className="col-span-12 no-print"
+        title={locale === "ar" ? "عناصر قابلة للتنفيذ" : "Actionable Controls"}
+      >
+        <div className="grid gap-2 md:grid-cols-[1.4fr_1fr_1fr]">
           <label className="relative">
             <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -193,9 +201,9 @@ export function BspConsole({ dataset }: BspConsoleProps) {
             ))}
           </select>
         </div>
-      </header>
+      </ErpSection>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <ErpKpiGrid>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tBsp("kpi.systemSales")}</p>
           <p className="mt-2 text-2xl font-bold text-finance">{filteredSystemRows.length}</p>
@@ -214,18 +222,20 @@ export function BspConsole({ dataset }: BspConsoleProps) {
             {formatCurrency(variance, locale, "SAR")}
           </p>
         </article>
+      </ErpKpiGrid>
+
+      <div className="col-span-12">
+        <SystemStatementSplit
+          locale={locale}
+          systemRows={systemRowsForSplit}
+          statementRows={statementRowsForSplit}
+          mismatchedTickets={mismatchedTickets}
+          selectedTicket={selectedTicket}
+          onSelectTicket={setSelectedTicket}
+        />
       </div>
 
-      <SystemStatementSplit
-        locale={locale}
-        systemRows={systemRowsForSplit}
-        statementRows={statementRowsForSplit}
-        mismatchedTickets={mismatchedTickets}
-        selectedTicket={selectedTicket}
-        onSelectTicket={setSelectedTicket}
-      />
-
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="col-span-12 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <MismatchDetector
           locale={locale}
           rows={filteredMismatches}
@@ -300,7 +310,7 @@ export function BspConsole({ dataset }: BspConsoleProps) {
         </section>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr]">
+      <div className="col-span-12 grid gap-4 xl:grid-cols-[1fr_1.3fr]">
         <AirlineSummary
           locale={locale}
           rows={filteredAirlineSummary}
@@ -309,6 +319,6 @@ export function BspConsole({ dataset }: BspConsoleProps) {
         />
         <SettlementTimeline locale={locale} rows={filteredTimeline} />
       </div>
-    </section>
+    </ErpPageLayout>
   );
 }

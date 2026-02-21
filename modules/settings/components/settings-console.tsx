@@ -2,6 +2,11 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import {
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
 import {
   areSettingsEqual,
@@ -133,26 +138,27 @@ export function SettingsConsole() {
   );
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tSettings("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tSettings("subtitle")}</p>
-        {hasChanges ? (
-          <p className="mt-2 text-xs text-warning">{tSettings("messages.unsaved")}</p>
-        ) : null}
-        {notice ? (
-          <p className="mt-3 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">
-            {notice}
-          </p>
-        ) : null}
-      </header>
+    <ErpPageLayout>
+      <ErpPageHeader
+        title={tSettings("title")}
+        description={tSettings("subtitle")}
+        meta={
+          <>
+            {hasChanges ? (
+              <p className="text-xs text-warning">{tSettings("messages.unsaved")}</p>
+            ) : null}
+            {notice ? (
+              <p className="mt-2 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">
+                {notice}
+              </p>
+            ) : null}
+          </>
+        }
+      />
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <section className="surface-card p-4">
-          <h3 className="text-sm font-semibold text-finance">
-            {tSettings("sections.preferences")}
-          </h3>
-          <div className="mt-3 space-y-2">
+      <div className="col-span-12 grid gap-4 xl:grid-cols-2">
+        <ErpSection title={tSettings("sections.preferences")}>
+          <div className="space-y-2">
             <label className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
               <span>{tSettings("fields.compactTable")}</span>
               <input
@@ -195,14 +201,10 @@ export function SettingsConsole() {
               />
             </label>
           </div>
-        </section>
+        </ErpSection>
 
-        <section className="surface-card p-4">
-          <h3 className="text-sm font-semibold text-finance">
-            {tSettings("sections.workflow")}
-          </h3>
-
-          <div className="mt-3 grid gap-3">
+        <ErpSection title={tSettings("sections.workflow")}>
+          <div className="grid gap-3">
             <label className="text-xs text-muted-foreground">
               {tSettings("fields.defaultLanding")}
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -290,29 +292,25 @@ export function SettingsConsole() {
               </select>
             </label>
           </div>
-        </section>
+        </ErpSection>
       </div>
 
-      <section className="surface-card p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-semibold text-finance">
-              {tSettings("sections.exchangeRates")}
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {tSettings("hints.exchangeRates")}
-            </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {tSettings("fields.exchangeRateUpdatedAt")}:{" "}
-              {exchangeRateUpdatedAt || tSettings("hints.exchangeRateUpdatedAtEmpty")}
-            </p>
-          </div>
+      <ErpSection
+        className="col-span-12"
+        title={tSettings("sections.exchangeRates")}
+        description={tSettings("hints.exchangeRates")}
+        actions={
           <Button variant="secondary" onClick={resetExchangeRates}>
             {tSettings("actions.resetRates")}
           </Button>
-        </div>
+        }
+      >
+        <p className="mb-3 text-[11px] text-muted-foreground">
+          {tSettings("fields.exchangeRateUpdatedAt")}:{" "}
+          {exchangeRateUpdatedAt || tSettings("hints.exchangeRateUpdatedAtEmpty")}
+        </p>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {editableExchangeCurrencies.map((currency) => (
             <label key={currency} className="text-xs text-muted-foreground">
               {tSettings(exchangeCurrencyOptionKey[currency])}
@@ -342,9 +340,9 @@ export function SettingsConsole() {
             </label>
           ))}
         </div>
-      </section>
+      </ErpSection>
 
-      <section className="surface-card flex items-center justify-end gap-2 p-4">
+      <section className="surface-card col-span-12 flex items-center justify-end gap-2 p-4">
         <Button variant="secondary" onClick={resetSettings}>
           {tSettings("actions.reset")}
         </Button>
@@ -352,6 +350,6 @@ export function SettingsConsole() {
           {tSettings("actions.save")}
         </Button>
       </section>
-    </section>
+    </ErpPageLayout>
   );
 }

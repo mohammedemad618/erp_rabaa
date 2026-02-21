@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { applySalesTransition } from "@/services/transaction-store";
 import type { SalesTransitionId } from "@/modules/sales/workflow/sales-state-machine";
+import { requireApiPermission } from "@/services/auth/api-guards";
+import { parseJsonBodySafe } from "@/services/http/request-body";
 
 interface TransitionRequestBody {
   transitionId?: SalesTransitionId;
@@ -12,6 +14,11 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ orderId: string }> },
 ) {
+  const guard = await requireApiPermission("sales.transition");
+  if (!guard.ok) {
+    return guard.response;
+  }
+
   const { orderId } = await context.params;
   if (!orderId) {
     return NextResponse.json(
@@ -23,7 +30,11 @@ export async function POST(
     );
   }
 
-  const body = (await request.json()) as TransitionRequestBody;
+  const parsedBody = await parseJsonBodySafe<TransitionRequestBody>(request);
+  if (!parsedBody.ok) {
+    return parsedBody.response;
+  }
+  const body = parsedBody.data;
   if (!body.transitionId) {
     return NextResponse.json(
       {

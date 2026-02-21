@@ -77,6 +77,51 @@ body {
   box-shadow: 0 8px 30px #14213d0a;
 }
 
+.surface-card :is(
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    input[type="date"],
+    input[type="datetime-local"],
+    input[type="search"],
+    input[type="password"],
+    input[type="url"],
+    input[type="tel"],
+    input:not([type]),
+    select,
+    textarea
+  ) {
+  border-color: #c5cedf;
+  border-radius: 0.65rem;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.surface-card :is(
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    input[type="date"],
+    input[type="datetime-local"],
+    input[type="search"],
+    input[type="password"],
+    input[type="url"],
+    input[type="tel"],
+    input:not([type]),
+    select,
+    textarea
+  ):focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.surface-card textarea {
+  resize: vertical;
+}
+
 .print-sheet {
   background: #fff;
   color: #1a1a1a;

@@ -14,6 +14,13 @@ import {
 import { Download, Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ErpKpiGrid,
+  ErpMainSplit,
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
 import { PermissionButton } from "@/components/ui/permission-button";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -318,11 +325,11 @@ export function TransactionWorkbench({
       if (target) {
         setSelectedId(target);
         scrollRowIntoView(target);
-        announceHotkey("Focused next low-confidence transaction");
+        announceHotkey(tTx("messages.nextLowConfidenceFocused"));
       }
       return;
     }
-    announceHotkey("No additional low-confidence transaction found");
+    announceHotkey(tTx("messages.noLowConfidence"));
   }
 
   useHotkeys([
@@ -330,7 +337,7 @@ export function TransactionWorkbench({
       key: "/",
       handler: () => {
         searchInputRef.current?.focus();
-        announceHotkey("Search focused");
+        announceHotkey(tTx("messages.searchFocused"));
       },
     },
     {
@@ -349,12 +356,12 @@ export function TransactionWorkbench({
     {
       key: "a",
       alt: true,
-      handler: () => announceHotkey("OCR field accepted (UI only)"),
+      handler: () => announceHotkey(tTx("messages.ocrFieldAccepted")),
     },
     {
       key: "d",
       alt: true,
-      handler: () => announceHotkey("Document zoom opened (UI only)"),
+      handler: () => announceHotkey(tTx("messages.documentZoomOpened")),
     },
   ]);
 
@@ -516,308 +523,484 @@ export function TransactionWorkbench({
 
   const selectedCount = table.getSelectedRowModel().rows.length;
   const pageCount = table.getPageCount();
+  const pendingApprovalCount = filteredTransactions.filter(
+    (transaction) => transaction.status === "pending_approval",
+  ).length;
+  const ocrReviewedCount = filteredTransactions.filter(
+    (transaction) => transaction.status === "ocr_reviewed",
+  ).length;
+  const highValueCount = filteredTransactions.filter(
+    (transaction) => transaction.totalAmount >= 1800,
+  ).length;
+  const cashOnlyCount = filteredTransactions.filter(
+    (transaction) => transaction.paymentMethod === "cash",
+  ).length;
+
+  function applyQueue(
+    queue: "all" | "pending_approval" | "ocr_reviewed" | "high_value" | "cash",
+  ): void {
+    if (queue === "all") {
+      setStatusFilter("all");
+      setQuickPreset("none");
+      return;
+    }
+    if (queue === "high_value") {
+      setStatusFilter("all");
+      setQuickPreset("high_value");
+      return;
+    }
+    if (queue === "cash") {
+      setStatusFilter("all");
+      setQuickPreset("cash");
+      return;
+    }
+    setStatusFilter(queue);
+    setQuickPreset("none");
+  }
+
+  function resetFilters(): void {
+    setSearch("");
+    setStatusFilter("all");
+    setQuickPreset("none");
+  }
 
   return (
-    <section className="space-y-4">
-      <header>
-        <h2 className="text-2xl font-bold text-finance">{tTx("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tTx("subtitle")}</p>
-      </header>
+    <ErpPageLayout>
+      <ErpPageHeader title={tTx("title")} description={tTx("subtitle")} />
 
-      <div className="grid gap-4 min-[1900px]:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-4">
-          <section className="surface-card p-4">
-            <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="relative">
-                  <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
-                    ref={searchInputRef}
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder={tCommon("search")}
-                    className="h-9 min-w-[220px] rounded-md border border-border bg-white ps-8 pe-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </label>
+      <ErpSection
+        className="col-span-12 no-print"
+        title={tTx("actionable.title")}
+        description={tTx("actionable.description")}
+      >
+        <div className="grid gap-2 lg:grid-cols-[1.35fr_1fr_180px_auto]">
+          <label className="relative">
+            <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <input
+              ref={searchInputRef}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={tCommon("search")}
+              className="h-9 w-full rounded-md border border-border bg-white ps-8 pe-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </label>
 
-                <select
-                  value={statusFilter}
-                  onChange={(event) =>
-                    setStatusFilter(event.target.value as TransactionStatus | "all")
-                  }
-                  className="h-9 rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                >
-                  <option value="all">
-                    {tCommon("status")}: {tCommon("all")}
-                  </option>
-                  {transactionStatusOrder.map((status) => (
-                    <option key={status} value={status}>
-                      {tTx(`statusValues.${status}`)}
-                    </option>
-                  ))}
-                </select>
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as TransactionStatus | "all")
+            }
+            className="h-9 rounded-md border border-border bg-white px-3 text-sm text-foreground"
+          >
+            <option value="all">
+              {tCommon("status")}: {tCommon("all")}
+            </option>
+            {transactionStatusOrder.map((status) => (
+              <option key={status} value={status}>
+                {tTx(`statusValues.${status}`)}
+              </option>
+            ))}
+          </select>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setStatusFilter("pending_approval")}
-                >
-                  {tTx("filters.quickPendingApproval")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={quickPreset === "cash" ? "bg-slate-100" : ""}
-                  onClick={() =>
-                    setQuickPreset((current) => (current === "cash" ? "none" : "cash"))
-                  }
-                >
-                  {tTx("filters.quickCashOnly")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={quickPreset === "high_value" ? "bg-slate-100" : ""}
-                  onClick={() =>
-                    setQuickPreset((current) =>
-                      current === "high_value" ? "none" : "high_value",
-                    )
-                  }
-                >
-                  {tTx("filters.quickHighValue")}
-                </Button>
-              </div>
+          <select
+            value={pagination.pageSize}
+            onChange={(event) =>
+              setPagination((previous) => ({
+                ...previous,
+                pageIndex: 0,
+                pageSize: Number(event.target.value),
+              }))
+            }
+            className="h-9 rounded-md border border-border bg-white px-3 text-sm text-foreground"
+          >
+            {[10, 25, 50, 100].map((size) => (
+              <option key={size} value={size}>
+                {tTx("pagination.rowsPerPage")}: {size}
+              </option>
+            ))}
+          </select>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={selectedCount === 0 || isApplyingTransition}
-                  onClick={() => void batchApproveSelection()}
-                >
-                  {tTx("actions.batchApprove")} ({selectedCount})
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => window.print()}>
-                  <Download className="me-1 h-3.5 w-3.5" />
-                  {tTx("actions.exportPdf")}
-                </Button>
-              </div>
-            </div>
-
-            {notice ? (
-              <p className="no-print mb-3 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">
-                {notice}
-              </p>
-            ) : null}
-
-            <div
-              ref={listContainerRef}
-              className="h-[520px] overflow-auto rounded-md border border-border"
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={selectedCount === 0 || isApplyingTransition}
+              onClick={() => void batchApproveSelection()}
             >
-              <table className="w-full table-fixed text-sm" aria-label="Transactions table">
-                <thead className="sticky top-0 z-10 bg-white">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id} className="border-b border-border">
-                      {headerGroup.headers.map((header) => {
-                        const sortState = header.column.getIsSorted();
-                        return (
-                          <th
-                            key={header.id}
-                            style={{ width: header.getSize() }}
-                            className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground"
-                          >
-                            {header.isPlaceholder ? null : (
-                              <button
-                                type="button"
-                                onClick={header.column.getToggleSortingHandler()}
-                                className={cn(
-                                  "inline-flex items-center gap-1",
-                                  header.column.getCanSort()
-                                    ? "cursor-pointer hover:text-foreground"
-                                    : "cursor-default",
-                                )}
-                              >
-                                {flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext(),
-                                )}
-                                {sortState === "asc"
-                                  ? "^"
-                                  : sortState === "desc"
-                                    ? "v"
-                                    : ""}
-                              </button>
-                            )}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </thead>
-
-                <tbody>
-                  {rows.length ? (
-                    rows.map((row) => {
-                      const active = selectedId === row.original.id;
-
-                      return (
-                        <tr
-                          key={row.id}
-                          ref={(node) => {
-                            rowRefs.current[row.original.id] = node;
-                          }}
-                          className={cn(
-                            "cursor-pointer border-b border-border transition hover:bg-slate-50",
-                            active ? "bg-blue-50/70" : "bg-white",
-                          )}
-                          onClick={() => setSelectedId(row.original.id)}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <td
-                              key={cell.id}
-                              style={{ width: cell.column.getSize() }}
-                              className="truncate px-2 py-2"
-                            >
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={columns.length}
-                        className="px-3 py-8 text-center text-sm text-muted-foreground"
-                      >
-                        {tCommon("noResults")}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="no-print mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <p>
-                {rows.length} rows in page, {filteredTransactions.length} matched records
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!table.getCanPreviousPage()}
-                  onClick={() => table.previousPage()}
-                >
-                  Prev
-                </Button>
-                <span>
-                  Page {pagination.pageIndex + 1} / {Math.max(pageCount, 1)}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!table.getCanNextPage()}
-                  onClick={() => table.nextPage()}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          <section className="surface-card no-print p-4">
-            <h3 className="text-sm font-semibold text-finance">{tTx("hotkeys.title")}</h3>
-            <div className="mt-2 grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
-              <p>{tTx("hotkeys.focusSearch")}</p>
-              <p>{tTx("hotkeys.nextRow")}</p>
-              <p>{tTx("hotkeys.prevRow")}</p>
-              <p>{tTx("hotkeys.nextLowConfidence")}</p>
-              <p>{tTx("hotkeys.acceptField")}</p>
-              <p>{tTx("hotkeys.zoomDocument")}</p>
-            </div>
-            {hotkeyMessage ? (
-              <p className="mt-2 rounded-md bg-slate-100 px-2 py-1 text-xs text-finance">
-                {hotkeyMessage}
-              </p>
-            ) : null}
-          </section>
+              {tTx("actions.batchApprove")} ({selectedCount})
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => window.print()}>
+              <Download className="me-1 h-3.5 w-3.5" />
+              {tTx("actions.exportPdf")}
+            </Button>
+          </div>
         </div>
 
-        <aside className="space-y-4 min-[1900px]:sticky min-[1900px]:top-20 min-[1900px]:self-start">
-          {selectedTransaction ? (
-            <>
-              <section className="surface-card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-finance">
-                      <bdi className="font-mono">{selectedTransaction.id}</bdi>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      <bdi>{selectedTransaction.customerName}</bdi>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      <bdi className="font-mono">
-                        {selectedTransaction.pnr} - {selectedTransaction.ticketNumber}
-                      </bdi>
-                    </p>
-                  </div>
-                  <StatusPill status={selectedTransaction.status} />
+        <div className="mt-3 rounded-md border border-border bg-slate-50/60 p-2">
+          <p className="mb-2 px-1 text-[11px] font-medium text-muted-foreground">
+            {tTx("filters.queueTitle")}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                statusFilter === "all" && quickPreset === "none" ? "bg-slate-100" : "",
+              )}
+              onClick={() => applyQueue("all")}
+            >
+              {tTx("filters.queueAll")} <span className="ms-1 text-xs">{transactions.length}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                statusFilter === "pending_approval" && quickPreset === "none"
+                  ? "bg-slate-100"
+                  : "",
+              )}
+              onClick={() => applyQueue("pending_approval")}
+            >
+              {tTx("filters.quickPendingApproval")}{" "}
+              <span className="ms-1 text-xs">{pendingApprovalCount}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                statusFilter === "ocr_reviewed" && quickPreset === "none" ? "bg-slate-100" : "",
+              )}
+              onClick={() => applyQueue("ocr_reviewed")}
+            >
+              {tTx("filters.queueOcrReviewed")}{" "}
+              <span className="ms-1 text-xs">{ocrReviewedCount}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(quickPreset === "high_value" ? "bg-slate-100" : "")}
+              onClick={() => applyQueue("high_value")}
+            >
+              {tTx("filters.quickHighValue")}{" "}
+              <span className="ms-1 text-xs">{highValueCount}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(quickPreset === "cash" ? "bg-slate-100" : "")}
+              onClick={() => applyQueue("cash")}
+            >
+              {tTx("filters.quickCashOnly")}{" "}
+              <span className="ms-1 text-xs">{cashOnlyCount}</span>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={resetFilters}>
+              {tTx("filters.resetFilters")}
+            </Button>
+          </div>
+        </div>
+
+        {notice ? (
+          <p className="mt-3 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">{notice}</p>
+        ) : null}
+      </ErpSection>
+
+      <ErpKpiGrid>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">{tTx("kpi.matchedRecords")}</p>
+          <p className="mt-2 text-lg font-bold text-finance">{filteredTransactions.length}</p>
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">{tTx("kpi.pendingApproval")}</p>
+          <p className="mt-2 text-lg font-bold text-finance">{pendingApprovalCount}</p>
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">{tTx("kpi.highValue")}</p>
+          <p className="mt-2 text-lg font-bold text-finance">{highValueCount}</p>
+        </article>
+        <article className="surface-card p-4">
+          <p className="text-xs text-muted-foreground">{tTx("kpi.selectedRows")}</p>
+          <p className="mt-2 text-lg font-bold text-finance">{selectedCount}</p>
+        </article>
+      </ErpKpiGrid>
+
+      <ErpMainSplit
+        asideFirst={locale === "ar"}
+        className="min-[1900px]:grid-cols-[minmax(0,1fr)_340px]"
+        primary={
+          <>
+            <ErpSection className="col-span-12" title={tTx("tableTitle")}>
+              <div
+                ref={listContainerRef}
+                className="h-[520px] overflow-auto rounded-md border border-border"
+              >
+                <table className="w-full table-fixed text-sm" aria-label="Transactions table">
+                  <thead className="sticky top-0 z-10 bg-white">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id} className="border-b border-border">
+                        {headerGroup.headers.map((header) => {
+                          const sortState = header.column.getIsSorted();
+                          return (
+                            <th
+                              key={header.id}
+                              style={{ width: header.getSize() }}
+                              className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground"
+                            >
+                              {header.isPlaceholder ? null : (
+                                <button
+                                  type="button"
+                                  onClick={header.column.getToggleSortingHandler()}
+                                  className={cn(
+                                    "inline-flex items-center gap-1",
+                                    header.column.getCanSort()
+                                      ? "cursor-pointer hover:text-foreground"
+                                      : "cursor-default",
+                                  )}
+                                >
+                                  {flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext(),
+                                  )}
+                                  {sortState === "asc"
+                                    ? "^"
+                                    : sortState === "desc"
+                                      ? "v"
+                                      : ""}
+                                </button>
+                              )}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </thead>
+
+                  <tbody>
+                    {rows.length ? (
+                      rows.map((row) => {
+                        const active = selectedId === row.original.id;
+
+                        return (
+                          <tr
+                            key={row.id}
+                            ref={(node) => {
+                              rowRefs.current[row.original.id] = node;
+                            }}
+                            className={cn(
+                              "cursor-pointer border-b border-border transition hover:bg-slate-50",
+                              active ? "bg-blue-50/70" : "bg-white",
+                            )}
+                            onClick={() => setSelectedId(row.original.id)}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <td
+                                key={cell.id}
+                                style={{ width: cell.column.getSize() }}
+                                className="truncate px-2 py-2"
+                              >
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-3 py-8 text-center text-sm text-muted-foreground"
+                        >
+                          {tCommon("noResults")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="no-print mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <p>
+                  {rows.length} {tTx("pagination.rowsInPage")}, {filteredTransactions.length}{" "}
+                  {tTx("pagination.matchedRecords")}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!table.getCanPreviousPage()}
+                    onClick={() => table.previousPage()}
+                  >
+                    {tTx("pagination.prev")}
+                  </Button>
+                  <span>
+                    {tTx("pagination.page")} {pagination.pageIndex + 1} / {Math.max(pageCount, 1)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!table.getCanNextPage()}
+                    onClick={() => table.nextPage()}
+                  >
+                    {tTx("pagination.next")}
+                  </Button>
                 </div>
+              </div>
+            </ErpSection>
+          </>
+        }
+        secondary={
+          <div className="space-y-4">
+            {selectedTransaction ? (
+              <>
+                <section className="surface-card p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-finance">{tTx("panel.summary")}</h3>
+                    <StatusPill status={selectedTransaction.status} />
+                  </div>
 
-                <div className="no-print mt-3 flex flex-wrap gap-2">
-                  <PermissionButton
-                    action="refund"
-                    transaction={selectedTransaction}
-                    label={tTx("actions.refund")}
-                    requiresPinLabel={tTx("actions.requiresPin")}
-                    disabled={isApplyingTransition}
-                    onClick={() => requestTransition("refund_sale")}
-                  />
-                  <PermissionButton
-                    action="void"
-                    transaction={selectedTransaction}
-                    label={tTx("actions.void")}
-                    requiresPinLabel={tTx("actions.requiresPin")}
-                    disabled={isApplyingTransition}
-                    onClick={() => requestTransition("void_sale")}
-                  />
-                </div>
+                  <p className="mt-2 text-sm font-semibold text-finance">
+                    <bdi className="font-mono">{selectedTransaction.id}</bdi>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <bdi className="font-mono">
+                      {selectedTransaction.pnr} - {selectedTransaction.ticketNumber}
+                    </bdi>
+                  </p>
+
+                  <dl className="mt-3 grid gap-x-3 gap-y-2 text-xs text-muted-foreground sm:grid-cols-2">
+                    <div>
+                      <dt className="text-[11px]">{tTx("table.customer")}</dt>
+                      <dd className="text-sm text-foreground">
+                        <bdi>{selectedTransaction.customerName}</bdi>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("panel.customerPhone")}</dt>
+                      <dd className="text-sm text-foreground">
+                        <bdi>{selectedTransaction.customerPhone}</bdi>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("table.airline")}</dt>
+                      <dd className="text-sm text-foreground">
+                        <bdi>{selectedTransaction.airline}</bdi>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("panel.branch")}</dt>
+                      <dd className="text-sm text-foreground">
+                        <bdi>{selectedTransaction.branch}</bdi>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("panel.agent")}</dt>
+                      <dd className="text-sm text-foreground">
+                        <bdi>{selectedTransaction.agent}</bdi>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("panel.paymentMethod")}</dt>
+                      <dd className="text-sm text-foreground">
+                        {tTx(`paymentMethods.${selectedTransaction.paymentMethod}`)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("table.total")}</dt>
+                      <dd className="text-sm text-foreground">
+                        {formatCurrency(
+                          selectedTransaction.totalAmount,
+                          locale,
+                          selectedTransaction.currency,
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("table.createdAt")}</dt>
+                      <dd className="text-sm text-foreground">
+                        {formatDate(selectedTransaction.createdAt, locale)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px]">{tTx("panel.issuedAt")}</dt>
+                      <dd className="text-sm text-foreground">
+                        {formatDate(selectedTransaction.issuedAt, locale)}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section className="surface-card p-4">
+                  <h3 className="text-sm font-semibold text-finance">{tTx("panel.quickActions")}</h3>
+                  <div className="no-print mt-3 flex flex-wrap gap-2">
+                    <PermissionButton
+                      action="refund"
+                      transaction={selectedTransaction}
+                      label={tTx("actions.refund")}
+                      requiresPinLabel={tTx("actions.requiresPin")}
+                      disabled={isApplyingTransition}
+                      onClick={() => requestTransition("refund_sale")}
+                    />
+                    <PermissionButton
+                      action="void"
+                      transaction={selectedTransaction}
+                      label={tTx("actions.void")}
+                      requiresPinLabel={tTx("actions.requiresPin")}
+                      disabled={isApplyingTransition}
+                      onClick={() => requestTransition("void_sale")}
+                    />
+                  </div>
+                </section>
+
+                <AccountingImpactPreview transaction={selectedTransaction} />
+                <SalesWorkflowPanel
+                  transaction={selectedTransaction}
+                  onExecuteTransition={requestTransition}
+                  isExecuting={isApplyingTransition}
+                />
+                <ApprovalTimeline transaction={selectedTransaction} />
+
+                <section className="surface-card p-4 text-sm">
+                  <h3 className="text-sm font-semibold text-finance">{tTx("panel.auditMeta")}</h3>
+                  <dl className="mt-3 space-y-2 text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <dt>{tTx("panel.createdBy")}</dt>
+                      <dd>{selectedTransaction.auditMetadata.createdBy}</dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt>{tTx("panel.updatedBy")}</dt>
+                      <dd>{selectedTransaction.auditMetadata.updatedBy}</dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt>{tTx("panel.version")}</dt>
+                      <dd>{selectedTransaction.auditMetadata.version}</dd>
+                    </div>
+                  </dl>
+                </section>
+              </>
+            ) : (
+              <section className="surface-card p-4 text-sm text-muted-foreground">
+                {tTx("empty.noSelection")}
               </section>
+            )}
 
-              <AccountingImpactPreview transaction={selectedTransaction} />
-              <SalesWorkflowPanel
-                transaction={selectedTransaction}
-                onExecuteTransition={requestTransition}
-                isExecuting={isApplyingTransition}
-              />
-              <ApprovalTimeline transaction={selectedTransaction} />
-
-              <section className="surface-card p-4 text-sm">
-                <h3 className="text-sm font-semibold text-finance">{tTx("panel.auditMeta")}</h3>
-                <dl className="mt-3 space-y-2 text-muted-foreground">
-                  <div className="flex items-center justify-between">
-                    <dt>{tTx("panel.createdBy")}</dt>
-                    <dd>{selectedTransaction.auditMetadata.createdBy}</dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt>{tTx("panel.updatedBy")}</dt>
-                    <dd>{selectedTransaction.auditMetadata.updatedBy}</dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt>Version</dt>
-                    <dd>{selectedTransaction.auditMetadata.version}</dd>
-                  </div>
-                </dl>
-              </section>
-            </>
-          ) : (
-            <section className="surface-card p-4 text-sm text-muted-foreground">
-              No transaction selected.
+            <section className="surface-card no-print p-4">
+              <h3 className="text-sm font-semibold text-finance">{tTx("hotkeys.title")}</h3>
+              <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                <p>{tTx("hotkeys.focusSearch")}</p>
+                <p>{tTx("hotkeys.nextRow")}</p>
+                <p>{tTx("hotkeys.prevRow")}</p>
+                <p>{tTx("hotkeys.nextLowConfidence")}</p>
+                <p>{tTx("hotkeys.acceptField")}</p>
+                <p>{tTx("hotkeys.zoomDocument")}</p>
+              </div>
+              {hotkeyMessage ? (
+                <p className="mt-2 rounded-md bg-slate-100 px-2 py-1 text-xs text-finance">
+                  {hotkeyMessage}
+                </p>
+              ) : null}
             </section>
-          )}
-        </aside>
-      </div>
+          </div>
+        }
+      />
 
       {pendingTransition ? (
         <div className="no-print fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 px-4">
@@ -868,7 +1051,7 @@ export function TransactionWorkbench({
           </div>
         </div>
       ) : null}
-    </section>
+    </ErpPageLayout>
   );
 }
 

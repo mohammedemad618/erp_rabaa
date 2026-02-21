@@ -1,0 +1,794 @@
+openapi: 3.1.0
+info:
+  title: Enterprise Travel Workflow API
+  version: 1.0.0
+  description: >
+    API contract for travel request lifecycle, booking, expense management,
+    and finance synchronization in Enterprise Travel ERP.
+
+servers:
+  - url: https://example.local
+    description: Placeholder server
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: auth_session
+
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+
+    TravelRequestStatus:
+      type: string
+      enum:
+        - draft
+        - submitted
+        - manager_approved
+        - travel_review
+        - finance_approved
+        - booked
+        - closed
+        - rejected
+        - cancelled
+
+    TravelExpenseStatus:
+      type: string
+      enum: [submitted, approved, rejected]
+
+    TravelExpenseCategory:
+      type: string
+      enum: [flight, hotel, ground_transport, meals, visa, other]
+
+    TravelTransitionId:
+      type: string
+      enum:
+        - submit_request
+        - approve_manager
+        - reject_manager
+        - start_travel_review
+        - approve_finance
+        - reject_finance
+        - confirm_booking
+        - close_trip
+        - cancel_request
+
+    TravelPolicyEditableConfig:
+      type: object
+      properties:
+        minAdvanceDaysByTripType:
+          type: object
+          additionalProperties:
+            type: integer
+        maxBudgetByGrade:
+          type: object
+          additionalProperties:
+            type: number
+        maxTravelClassByGrade:
+          type: object
+          additionalProperties:
+            type: string
+        budgetWarningThreshold:
+          type: number
+        maxTripLengthDays:
+          type: integer
+      required:
+        - minAdvanceDaysByTripType
+        - maxBudgetByGrade
+        - maxTravelClassByGrade
+        - budgetWarningThreshold
+        - maxTripLengthDays
+
+    TravelPolicyVersionRecord:
+      type: object
+      properties:
+        versionId:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, scheduled, retired]
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        effectiveFrom:
+          type: string
+          format: date-time
+        activatedAt:
+          type: string
+          format: date-time
+        activatedBy:
+          type: string
+        note:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+      required:
+        - versionId
+        - status
+        - createdAt
+        - createdBy
+        - effectiveFrom
+        - config
+
+    TravelPolicyEvaluation:
+      type: object
+      properties:
+        policyVersion:
+          type: string
+        level:
+          type: string
+          enum: [compliant, warning, blocked]
+        findings:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        evaluatedAt:
+          type: string
+          format: date-time
+      required: [policyVersion, level, findings, evaluatedAt]
+
+    TravelExpenseReceipt:
+      type: object
+      properties:
+        fileName:
+          type: string
+        mimeType:
+          type: string
+        sizeInBytes:
+          type: integer
+        uploadedAt:
+          type: string
+          format: date-time
+      required: [fileName, mimeType, sizeInBytes, uploadedAt]
+
+    TravelExpenseClaim:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          $ref: "#/components/schemas/TravelExpenseCategory"
+        amount:
+          type: number
+        currency:
+          type: string
+        expenseDate:
+          type: string
+          format: date-time
+        merchant:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: "#/components/schemas/TravelExpenseStatus"
+        submittedBy:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+        reviewedAt:
+          type: string
+          format: date-time
+        reviewNote:
+          type: string
+        syncedAt:
+          type: string
+          format: date-time
+        syncedBatchId:
+          type: string
+        receipt:
+          $ref: "#/components/schemas/TravelExpenseReceipt"
+      required:
+        - id
+        - category
+        - amount
+        - currency
+        - expenseDate
+        - merchant
+        - description
+        - status
+        - submittedBy
+        - submittedAt
+        - receipt
+
+    TravelBookingRecord:
+      type: object
+      properties:
+        vendor:
+          type: string
+        bookingReference:
+          type: string
+        ticketNumber:
+          type: string
+        bookedAt:
+          type: string
+          format: date-time
+        totalBookedCost:
+          type: number
+        currency:
+          type: string
+        bookedBy:
+          type: string
+      required:
+        - vendor
+        - bookingReference
+        - bookedAt
+        - totalBookedCost
+        - currency
+        - bookedBy
+
+    TravelFinanceSyncState:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_synced, pending, succeeded, failed]
+        attemptCount:
+          type: integer
+        lastAttemptAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+        lastBatchId:
+          type: string
+      required: [status, attemptCount]
+
+    TravelTripClosureRecord:
+      type: object
+      properties:
+        closedAt:
+          type: string
+          format: date-time
+        closedBy:
+          type: string
+        closureNote:
+          type: string
+        totalExpenses:
+          type: integer
+        totalApprovedAmount:
+          type: number
+        totalSettledAmount:
+          type: number
+        varianceFromBookedCost:
+          type: number
+        varianceFromEstimatedCost:
+          type: number
+        financeBatchId:
+          type: string
+        financeAttemptCount:
+          type: integer
+      required:
+        - closedAt
+        - closedBy
+        - totalExpenses
+        - totalApprovedAmount
+        - totalSettledAmount
+        - varianceFromBookedCost
+        - varianceFromEstimatedCost
+        - financeAttemptCount
+
+    TravelClosureReadinessCheck:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - trip_completed
+            - booking_recorded
+            - expenses_reviewed
+            - approved_expenses_synced
+            - finance_sync_not_failed
+        passed:
+          type: boolean
+        message:
+          type: string
+      required: [code, passed, message]
+
+    TravelClosureReadiness:
+      type: object
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        ready:
+          type: boolean
+        requiresFinanceSync:
+          type: boolean
+        pendingExpenses:
+          type: integer
+        approvedExpenses:
+          type: integer
+        approvedUnsyncedExpenses:
+          type: integer
+        rejectedExpenses:
+          type: integer
+        totalExpenses:
+          type: integer
+        totalApprovedAmount:
+          type: number
+        totalApprovedSyncedAmount:
+          type: number
+        financeSyncStatus:
+          type: string
+          enum: [not_synced, pending, succeeded, failed]
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TravelClosureReadinessCheck"
+      required:
+        - checkedAt
+        - ready
+        - requiresFinanceSync
+        - pendingExpenses
+        - approvedExpenses
+        - approvedUnsyncedExpenses
+        - rejectedExpenses
+        - totalExpenses
+        - totalApprovedAmount
+        - totalApprovedSyncedAmount
+        - financeSyncStatus
+        - checks
+
+    TravelRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeName:
+          type: string
+        employeeEmail:
+          type: string
+        status:
+          $ref: "#/components/schemas/TravelRequestStatus"
+        estimatedCost:
+          type: number
+        currency:
+          type: string
+        booking:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/TravelBookingRecord"
+        expenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/TravelExpenseClaim"
+        financeSync:
+          $ref: "#/components/schemas/TravelFinanceSyncState"
+        closure:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/TravelTripClosureRecord"
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employeeName
+        - employeeEmail
+        - status
+        - estimatedCost
+        - currency
+        - booking
+        - expenses
+        - financeSync
+        - closure
+        - updatedAt
+
+security:
+  - sessionCookie: []
+
+paths:
+  /api/travel/requests:
+    get:
+      summary: List travel requests
+      responses:
+        "200":
+          description: Travel requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TravelRequest"
+    post:
+      summary: Create travel request draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "201":
+          description: Created request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelRequest"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/travel/requests/{requestId}/transition:
+    post:
+      summary: Execute workflow transition
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transitionId:
+                  $ref: "#/components/schemas/TravelTransitionId"
+                note:
+                  type: string
+              required: [transitionId]
+      responses:
+        "200":
+          description: Transition result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: "#/components/schemas/TravelRequest"
+                  fromStatus:
+                    $ref: "#/components/schemas/TravelRequestStatus"
+                  toStatus:
+                    $ref: "#/components/schemas/TravelRequestStatus"
+                required: [request, fromStatus, toStatus]
+        "409":
+          description: Transition not allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/travel/requests/{requestId}/booking:
+    post:
+      summary: Upsert booking details
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vendor:
+                  type: string
+                bookingReference:
+                  type: string
+                ticketNumber:
+                  type: string
+                bookedAt:
+                  type: string
+                  format: date-time
+                totalBookedCost:
+                  type: number
+                currency:
+                  type: string
+              required: [vendor, bookingReference, totalBookedCost, currency]
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: "#/components/schemas/TravelRequest"
+                required: [request]
+
+  /api/travel/requests/{requestId}/expenses:
+    post:
+      summary: Submit expense claim
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  $ref: "#/components/schemas/TravelExpenseCategory"
+                amount:
+                  type: number
+                currency:
+                  type: string
+                expenseDate:
+                  type: string
+                merchant:
+                  type: string
+                description:
+                  type: string
+                receiptFileName:
+                  type: string
+                receiptMimeType:
+                  type: string
+                receiptSizeInBytes:
+                  type: integer
+              required:
+                - category
+                - amount
+                - currency
+                - expenseDate
+                - merchant
+                - description
+                - receiptFileName
+                - receiptMimeType
+                - receiptSizeInBytes
+      responses:
+        "201":
+          description: Submitted expense
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: "#/components/schemas/TravelRequest"
+                  expense:
+                    $ref: "#/components/schemas/TravelExpenseClaim"
+                required: [request, expense]
+
+  /api/travel/requests/{requestId}/expenses/{expenseId}/decision:
+    post:
+      summary: Review expense claim
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: expenseId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum: [approve, reject]
+                note:
+                  type: string
+              required: [decision]
+      responses:
+        "200":
+          description: Reviewed expense
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: "#/components/schemas/TravelRequest"
+                  expense:
+                    $ref: "#/components/schemas/TravelExpenseClaim"
+                required: [request, expense]
+
+  /api/travel/requests/{requestId}/finance/sync:
+    post:
+      summary: Synchronize approved expenses to ERP
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sync succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: "#/components/schemas/TravelRequest"
+                  batchId:
+                    type: string
+                  syncedExpenses:
+                    type: integer
+                required: [request, batchId, syncedExpenses]
+        "502":
+          description: Sync failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/travel/requests/{requestId}/closure/readiness:
+    get:
+      summary: Get final trip closure readiness checks
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                  readiness:
+                    $ref: "#/components/schemas/TravelClosureReadiness"
+                required: [requestId, readiness]
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/travel/policy/active:
+    get:
+      summary: Get currently active travel policy version
+      responses:
+        "200":
+          description: Active policy version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelPolicyVersionRecord"
+
+  /api/travel/policy/simulate:
+    post:
+      summary: Simulate policy evaluation for a hypothetical request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeGrade:
+                  type: string
+                tripType:
+                  type: string
+                departureDate:
+                  type: string
+                returnDate:
+                  type: string
+                travelClass:
+                  type: string
+                estimatedCost:
+                  type: number
+                currency:
+                  type: string
+                policyVersionId:
+                  type: string
+              required:
+                - employeeGrade
+                - tripType
+                - departureDate
+                - returnDate
+                - travelClass
+                - estimatedCost
+      responses:
+        "200":
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelPolicyEvaluation"
+
+  /api/travel/policy/versions:
+    get:
+      summary: List policy versions
+      responses:
+        "200":
+          description: Policy versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TravelPolicyVersionRecord"
+    post:
+      summary: Create policy draft version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                config:
+                  $ref: "#/components/schemas/TravelPolicyEditableConfig"
+                note:
+                  type: string
+              required: [config]
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelPolicyVersionRecord"
+
+  /api/travel/policy/versions/{versionId}/activate:
+    post:
+      summary: Activate or schedule a policy version
+      parameters:
+        - in: path
+          name: versionId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                effectiveFrom:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+      responses:
+        "200":
+          description: Version activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelPolicyVersionRecord"
+        "404":
+          description: Version not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   BarChart3,
@@ -8,6 +8,8 @@ import {
   FileText,
   LayoutDashboard,
   Landmark,
+  LogOut,
+  Plane,
   type LucideIcon,
   Printer,
   ReceiptText,
@@ -15,7 +17,7 @@ import {
   Ticket,
   Users,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -23,6 +25,7 @@ import {
   SETTINGS_CHANGED_EVENT,
   SETTINGS_STORAGE_KEY,
 } from "@/modules/settings/settings-config";
+import { requiredPermissionForRoute } from "@/services/auth/page-permissions";
 import { cn } from "@/utils/cn";
 import { LocaleSwitcher } from "./locale-switcher";
 
@@ -62,12 +65,29 @@ interface NavGroup {
   subgroups: NavSubgroup[];
 }
 
+interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface SessionPayload {
+  authenticated: boolean;
+  user?: SessionUser;
+  permissions?: string[];
+}
+
 export function AppShell({ children }: AppShellProps) {
+  const locale = useLocale();
   const tNav = useTranslations("nav");
   const tNavGroups = useTranslations("navGroups");
   const tNavSubgroups = useTranslations("navSubgroups");
   const tApp = useTranslations("app");
+  const tAuth = useTranslations("auth");
+  const tRoles = useTranslations("roles");
   const pathname = usePathname();
+  const isLoginRoute = pathname === "/login";
 
   const navigation: NavGroup[] = [
     {
@@ -94,6 +114,11 @@ export function AppShell({ children }: AppShellProps) {
           id: "salesFlow",
           label: tNavSubgroups("salesFlow"),
           items: [
+            {
+              href: "/travel",
+              label: tNav("travel"),
+              icon: Plane,
+            },
             { href: "/transactions", label: tNav("transactions"), icon: Ticket },
             { href: "/expenses", label: tNav("expenses"), icon: ReceiptText },
           ],
@@ -164,6 +189,9 @@ export function AppShell({ children }: AppShellProps) {
     documents: false,
   });
   const [contentVersion, setContentVersion] = useState(0);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [sessionPermissions, setSessionPermissions] = useState<string[]>([]);
 
   useEffect(() => {
     const refreshContent = () => {
@@ -186,6 +214,48 @@ export function AppShell({ children }: AppShellProps) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadSession(): Promise<void> {
+      try {
+        const response = await fetch("/api/auth/session", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as SessionPayload;
+        if (!active) {
+          return;
+        }
+
+        if (payload.authenticated && payload.user) {
+          setSessionUser(payload.user);
+          setSessionPermissions(Array.isArray(payload.permissions) ? payload.permissions : []);
+        } else {
+          setSessionUser(null);
+          setSessionPermissions([]);
+        }
+      } catch {
+        if (!active) {
+          return;
+        }
+        setSessionUser(null);
+        setSessionPermissions([]);
+      } finally {
+        if (active) {
+          setAuthLoading(false);
+        }
+      }
+    }
+
+    setAuthLoading(true);
+    void loadSession();
+
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
+
   function isRouteActive(href: string): boolean {
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
   }
@@ -195,6 +265,54 @@ export function AppShell({ children }: AppShellProps) {
       ...previous,
       [groupId]: !previous[groupId],
     }));
+  }
+
+  function canAccessRoute(href: string): boolean {
+    if (!sessionUser) {
+      return false;
+    }
+    const requiredPermission = requiredPermissionForRoute(href);
+    if (!requiredPermission) {
+      return false;
+    }
+    return sessionPermissions.includes(requiredPermission);
+  }
+
+  async function logout(): Promise<void> {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+    } catch {
+      // no-op
+    }
+    window.location.href = `/${locale}/login`;
+  }
+
+  const roleLabelMap: Record<string, string> = {
+    admin: tRoles("admin"),
+    finance_manager: tRoles("finance_manager"),
+    agent: tRoles("agent"),
+    auditor: tRoles("auditor"),
+    manager: tRoles("manager"),
+    travel_desk: tRoles("travel_desk"),
+  };
+
+  if (isLoginRoute || (!authLoading && !sessionUser)) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-white/85 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 lg:px-6">
+          <div>
+            <p className="text-sm font-semibold tracking-wide text-primary">{tApp("name")}</p>
+            <p className="text-xs text-muted-foreground">{tApp("product")}</p>
+          </div>
+          <LocaleSwitcher />
+        </header>
+        <main key={contentVersion} className="mx-auto w-full max-w-3xl flex-1 p-4 lg:p-6">
+          {children}
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -209,8 +327,19 @@ export function AppShell({ children }: AppShellProps) {
 
           <nav className="space-y-2 overflow-y-auto pe-1">
             {navigation.map((group) => {
+              const visibleSubgroups = group.subgroups
+                .map((subgroup) => ({
+                  ...subgroup,
+                  items: subgroup.items.filter((item) => canAccessRoute(item.href)),
+                }))
+                .filter((subgroup) => subgroup.items.length > 0);
+
+              if (!visibleSubgroups.length) {
+                return null;
+              }
+
               const GroupIcon = group.icon;
-              const hasActiveItem = group.subgroups.some((subgroup) =>
+              const hasActiveItem = visibleSubgroups.some((subgroup) =>
                 subgroup.items.some((item) => isRouteActive(item.href)),
               );
               const isExpanded = hasActiveItem || expandedGroups[group.id];
@@ -238,7 +367,7 @@ export function AppShell({ children }: AppShellProps) {
 
                   {isExpanded ? (
                     <div className="mb-1 space-y-2 border-s border-border/70 pb-2 ps-2 pe-1">
-                      {group.subgroups.map((subgroup) => (
+                      {visibleSubgroups.map((subgroup) => (
                         <div key={`${group.id}-${subgroup.id}`} className="space-y-1">
                           <p className="px-2 text-[11px] font-medium text-muted-foreground">
                             {subgroup.label}
@@ -276,7 +405,25 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="flex min-h-screen flex-col">
         <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-border bg-white/85 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 lg:px-6">
-          <LocaleSwitcher />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-slate-100 px-2 py-1">
+              {sessionUser?.name ?? "-"}
+            </span>
+            <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">
+              {roleLabelMap[sessionUser?.role ?? ""] ?? sessionUser?.role ?? "-"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <LocaleSwitcher />
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1.5 text-xs text-foreground hover:bg-slate-100"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              {tAuth("logout")}
+            </button>
+          </div>
         </header>
 
         <main key={contentVersion} className="print-sheet flex-1 p-4 lg:p-6">
@@ -286,3 +433,4 @@ export function AppShell({ children }: AppShellProps) {
     </div>
   );
 }
+

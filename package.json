@@ -8,9 +8,23 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:netlify": "next build --webpack",
+    "build:netlify": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npm run test:travel",
+    "test:travel": "node --test --test-concurrency=1 --import tsx tests/travel-workflow.integration.test.ts tests/api-json-validation.test.ts tests/i18n-integrity.test.ts",
+    "pilot:smoke": "powershell -ExecutionPolicy Bypass -File scripts/pilot/smoke-check.ps1",
+    "pilot:daily-report": "powershell -ExecutionPolicy Bypass -File scripts/pilot/daily-health-report.ps1",
+    "pilot:usage-scenario": "powershell -ExecutionPolicy Bypass -File scripts/pilot/usage-scenario-check.ps1",
+    "pilot:weekly-summary": "powershell -ExecutionPolicy Bypass -File scripts/pilot/weekly-executive-summary.ps1",
+    "pilot:performance-gate": "powershell -ExecutionPolicy Bypass -File scripts/pilot/performance-gate.ps1",
+    "pilot:security-gate": "powershell -ExecutionPolicy Bypass -File scripts/pilot/security-gate.ps1",
+    "pilot:go-no-go": "powershell -ExecutionPolicy Bypass -File scripts/pilot/go-no-go-decision.ps1 -RunQualityGates -RunPerformanceGate -RunSecurityGate",
+    "pilot:release-readiness": "powershell -ExecutionPolicy Bypass -File scripts/pilot/release-readiness.ps1 -RunQualityGates -RunPerformanceGate -RunSecurityGate",
+    "pilot:rollback-drill": "powershell -ExecutionPolicy Bypass -File scripts/pilot/rollback-drill.ps1",
+    "pilot:hypercare": "powershell -ExecutionPolicy Bypass -File scripts/pilot/hypercare-daily.ps1",
+    "pilot:task:register": "powershell -ExecutionPolicy Bypass -File scripts/pilot/register-hypercare-task.ps1",
+    "pilot:task:unregister": "powershell -ExecutionPolicy Bypass -File scripts/pilot/unregister-hypercare-task.ps1"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -37,6 +51,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

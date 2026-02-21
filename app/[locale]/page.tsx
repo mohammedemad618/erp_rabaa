@@ -1,15 +1,25 @@
 import { Link } from "@/i18n/navigation";
 import {
+  ErpKpiGrid,
+  ErpPageHeader,
+  ErpPageLayout,
+} from "@/components/layout/erp-page-layout";
+import {
   deserializeExchangeRates,
   DISPLAY_CURRENCY_COOKIE_KEY,
   EXCHANGE_RATES_COOKIE_KEY,
 } from "@/modules/settings/settings-config";
+import { requirePermission } from "@/services/auth/server-guards";
 import { transactionService } from "@/services/transaction-service";
 import { formatCurrency } from "@/utils/format";
 import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
+
+interface DashboardPageProps {
+  params: Promise<{ locale: string }>;
+}
 
 function decodeCookieValue(value?: string): string | null {
   if (!value) {
@@ -22,7 +32,9 @@ function decodeCookieValue(value?: string): string | null {
   }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ params }: DashboardPageProps) {
+  const { locale: routeLocale } = await params;
+  await requirePermission(routeLocale, "dashboard.view", `/${routeLocale}`);
   const [tDashboard, transactions, locale, cookieStore] = await Promise.all([
     getTranslations("dashboard"),
     transactionService.list(),
@@ -67,28 +79,28 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tDashboard("title")}</h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          {tDashboard("description")}
-        </p>
-        <Link
-          href="/transactions"
-          className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition hover:opacity-95"
-        >
-          {tDashboard("cta")}
-        </Link>
-      </header>
+    <ErpPageLayout>
+      <ErpPageHeader
+        title={tDashboard("title")}
+        description={tDashboard("description")}
+        actions={
+          <Link
+            href="/transactions"
+            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition hover:opacity-95"
+          >
+            {tDashboard("cta")}
+          </Link>
+        }
+      />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <ErpKpiGrid>
         {kpiCards.map((kpi) => (
           <article key={kpi.label} className="surface-card p-4">
             <p className="text-xs text-muted-foreground">{kpi.label}</p>
             <p className="mt-2 text-2xl font-bold text-finance">{kpi.value}</p>
           </article>
         ))}
-      </div>
-    </section>
+      </ErpKpiGrid>
+    </ErpPageLayout>
   );
 }

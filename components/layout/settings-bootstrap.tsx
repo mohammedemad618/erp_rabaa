@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import {
   DEFAULT_SETTINGS,
+  dispatchSettingsChanged,
   DISPLAY_CURRENCY_COOKIE_KEY,
   EXCHANGE_RATES_COOKIE_KEY,
   readStoredSettings,
@@ -81,7 +82,9 @@ export function SettingsBootstrap({ locale }: SettingsBootstrapProps) {
       navigateIfNeeded(locale, settings, window.location.pathname);
     };
 
-    applyRuntimePreferences(readStoredSettings());
+    const initialSettings = readStoredSettings();
+    applyRuntimePreferences(initialSettings);
+    dispatchSettingsChanged(initialSettings);
 
     const handleSettingsChanged = (event: Event) => {
       const payload = (event as CustomEvent<PrototypeSettings>).detail;

@@ -2,7 +2,6 @@ import {
   DEFAULT_EXCHANGE_RATES,
   deserializeExchangeRates,
   normalizeExchangeRates,
-  SETTINGS_STORAGE_KEY,
   type DisplayCurrency,
   type ExchangeRateMap,
 } from "@/modules/settings/settings-config";
@@ -32,20 +31,7 @@ function resolveRuntimeDisplayCurrency(): DisplayCurrency | null {
   const datasetCode = asSupportedCurrency(
     document.documentElement.dataset.displayCurrency ?? "",
   );
-  if (datasetCode) {
-    return datasetCode;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    const parsed = JSON.parse(raw) as { displayCurrency?: string };
-    return asSupportedCurrency(parsed.displayCurrency ?? "");
-  } catch {
-    return null;
-  }
+  return datasetCode;
 }
 
 function safeDecodeUri(value: string): string {
@@ -70,19 +56,7 @@ function resolveRuntimeExchangeRates(): ExchangeRateMap | null {
       return datasetRates;
     }
   }
-
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    const parsed = JSON.parse(raw) as {
-      exchangeRates?: Partial<Record<DisplayCurrency, number>>;
-    };
-    return parsed.exchangeRates ? normalizeExchangeRates(parsed.exchangeRates) : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 function convertCurrencyAmount(

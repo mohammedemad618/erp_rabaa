@@ -3,6 +3,12 @@
 import { Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import {
+  ErpKpiGrid,
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import { formatCurrency, formatDate } from "@/utils/format";
 import type { CrmDataset, CustomerProfile, CustomerRiskLevel } from "../types";
 
@@ -92,12 +98,14 @@ export function CrmConsole({ dataset }: CrmConsoleProps) {
   const maxAging = maxAgingAmount(selectedCustomer);
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tCrm("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tCrm("subtitle")}</p>
+    <ErpPageLayout>
+      <ErpPageHeader title={tCrm("title")} description={tCrm("subtitle")} />
 
-        <div className="no-print mt-4 grid gap-2 md:grid-cols-[1.4fr_1fr]">
+      <ErpSection
+        className="col-span-12 no-print"
+        title={locale === "ar" ? "عناصر قابلة للتنفيذ" : "Actionable Controls"}
+      >
+        <div className="grid gap-2 md:grid-cols-[1.4fr_1fr]">
           <label className="relative">
             <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -119,9 +127,9 @@ export function CrmConsole({ dataset }: CrmConsoleProps) {
             <option value="high">{tCrm("risk.high")}</option>
           </select>
         </div>
-      </header>
+      </ErpSection>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <ErpKpiGrid>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tCrm("kpi.customers")}</p>
           <p className="mt-2 text-2xl font-bold text-finance">{filteredCustomers.length}</p>
@@ -146,9 +154,9 @@ export function CrmConsole({ dataset }: CrmConsoleProps) {
           <p className="text-xs text-muted-foreground">{tCrm("kpi.highRisk")}</p>
           <p className="mt-2 text-2xl font-bold text-finance">{highRiskCount}</p>
         </article>
-      </div>
+      </ErpKpiGrid>
 
-      <div className="grid gap-4 xl:grid-cols-[330px_1fr]">
+      <div className="col-span-12 grid gap-4 xl:grid-cols-[330px_1fr]">
         <section className="surface-card overflow-hidden">
           <header className="border-b border-border bg-slate-50 px-4 py-3">
             <h3 className="text-sm font-semibold text-finance">{tCrm("customers.title")}</h3>
@@ -394,6 +402,6 @@ export function CrmConsole({ dataset }: CrmConsoleProps) {
           )}
         </div>
       </div>
-    </section>
+    </ErpPageLayout>
   );
 }

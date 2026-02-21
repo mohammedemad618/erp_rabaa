@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { OcrDocument, OcrField } from "@/modules/ocr/types";
+import { requireApiPermission } from "@/services/auth/api-guards";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_BRANCH = "Online";
@@ -259,6 +260,11 @@ function createDocumentFromFile(
 }
 
 export async function POST(request: Request) {
+  const guard = await requireApiPermission("ocr.extract");
+  if (!guard.ok) {
+    return guard.response;
+  }
+
   const formData = await request.formData();
   const fileEntry = formData.get("file");
   if (!(fileEntry instanceof File)) {

@@ -4,7 +4,15 @@ import dynamic from "next/dynamic";
 import { Download, FileSpreadsheet, Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ErpKpiGrid,
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
+import type { TravelInsights } from "@/modules/travel/services/travel-insights";
+import { fetchTravelInsights } from "@/services/travel-workflow-api";
 import { formatCurrency, formatDate } from "@/utils/format";
 import type {
   CashFlowPoint,
@@ -17,21 +25,31 @@ import type {
   ReportingDataset,
 } from "../types";
 
+function ReportsVisualsLoading() {
+  const tReports = useTranslations("reportsModule");
+  return (
+    <section className="surface-card p-4">
+      <p className="text-sm text-muted-foreground">{tReports("loadingVisuals")}</p>
+    </section>
+  );
+}
+
 const ReportsVisuals = dynamic(
   () => import("./reports-visuals").then((mod) => mod.ReportsVisuals),
   {
     ssr: false,
-    loading: () => (
-      <section className="surface-card p-4">
-        <p className="text-sm text-muted-foreground">Loading BI visuals...</p>
-      </section>
-    ),
+    loading: ReportsVisualsLoading,
   },
 );
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_BUCKETS: HourBucket[] = ["00_05", "06_11", "12_17", "18_23"];
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
+const travelRiskLevelStyles: Record<"low" | "medium" | "high", string> = {
+  low: "bg-emerald-100 text-emerald-700",
+  medium: "bg-amber-100 text-amber-700",
+  high: "bg-rose-100 text-rose-700",
+};
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
@@ -217,6 +235,8 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
   const [costPct, setCostPct] = useState(2);
   const [drill, setDrill] = useState<{ type: DrillType; key: string } | null>(null);
   const [notice, setNotice] = useState("");
+  const [travelInsights, setTravelInsights] = useState<TravelInsights | null>(null);
+  const [isTravelInsightsLoading, setIsTravelInsightsLoading] = useState(true);
 
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -225,6 +245,36 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
       if (noticeTimer.current) {
         clearTimeout(noticeTimer.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadTravelInsights(): Promise<void> {
+      try {
+        setIsTravelInsightsLoading(true);
+        const nextInsights = await fetchTravelInsights();
+        if (!active) {
+          return;
+        }
+        setTravelInsights(nextInsights);
+      } catch {
+        if (!active) {
+          return;
+        }
+        setTravelInsights(null);
+      } finally {
+        if (active) {
+          setIsTravelInsightsLoading(false);
+        }
+      }
+    }
+
+    void loadTravelInsights();
+
+    return () => {
+      active = false;
     };
   }, []);
 
@@ -327,13 +377,19 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
     noticeTimer.current = setTimeout(() => setNotice(""), 2200);
   }
 
-  return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tReports("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tReports("subtitle")}</p>
+  const travelInsightsValueFallback = isTravelInsightsLoading
+    ? tReports("travelIndicators.loading")
+    : "-";
 
-        <div className="no-print mt-4 grid gap-2 md:grid-cols-[1.4fr_1fr_1fr_auto_auto]">
+  return (
+    <ErpPageLayout>
+      <ErpPageHeader title={tReports("title")} description={tReports("subtitle")} />
+
+      <ErpSection
+        className="col-span-12 no-print"
+        title={tReports("actionableTitle")}
+      >
+        <div className="grid gap-2 md:grid-cols-[1.4fr_1fr_1fr_auto_auto]">
           <label className="relative">
             <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -387,13 +443,143 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
         </div>
 
         {notice ? (
-          <p className="mt-3 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">
-            {notice}
-          </p>
+          <p className="mt-3 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">{notice}</p>
         ) : null}
-      </header>
+      </ErpSection>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+      <ErpSection
+        className="col-span-12"
+        title={tReports("travelIndicators.title")}
+        description={tReports("travelIndicators.subtitle")}
+      >
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-md border border-border bg-white px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">
+              {tReports("travelIndicators.complianceRate")}
+            </p>
+            <p className="mt-1 text-lg font-semibold text-finance">
+              {travelInsights
+                ? `${travelInsights.complianceRate}${tReports("travelIndicators.units.percent")}`
+                : travelInsightsValueFallback}
+            </p>
+          </article>
+          <article className="rounded-md border border-border bg-white px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">
+              {tReports("travelIndicators.blockedRate")}
+            </p>
+            <p className="mt-1 text-lg font-semibold text-finance">
+              {travelInsights
+                ? `${travelInsights.blockedPolicyRate}${tReports("travelIndicators.units.percent")}`
+                : travelInsightsValueFallback}
+            </p>
+          </article>
+          <article className="rounded-md border border-border bg-white px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">
+              {tReports("travelIndicators.avgLeadTime")}
+            </p>
+            <p className="mt-1 text-lg font-semibold text-finance">
+              {travelInsights
+                ? `${travelInsights.averageLeadTimeDays} ${tReports("travelIndicators.units.days")}`
+                : travelInsightsValueFallback}
+            </p>
+          </article>
+          <article className="rounded-md border border-border bg-white px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">
+              {tReports("travelIndicators.avgApprovalCycle")}
+            </p>
+            <p className="mt-1 text-lg font-semibold text-finance">
+              {travelInsights
+                ? `${travelInsights.averageApprovalCycleHours} ${tReports("travelIndicators.units.hours")}`
+                : travelInsightsValueFallback}
+            </p>
+          </article>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          <section className="rounded-md border border-border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-finance">
+                {tReports("travelIndicators.slaBreaches")}
+              </h4>
+              <span className="text-[11px] text-muted-foreground">
+                {travelInsights?.slaBreaches.length ?? 0}
+              </span>
+            </div>
+            {travelInsights?.slaBreaches.length ? (
+              <div className="space-y-2">
+                {travelInsights.slaBreaches.slice(0, 5).map((row) => (
+                  <article
+                    key={row.requestId}
+                    className="rounded-md border border-border px-2 py-2"
+                  >
+                    <p className="text-xs font-medium text-finance">{row.requestId}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {row.employeeName} - {row.costCenter}
+                    </p>
+                    <p className="mt-1 text-[11px] text-rose-700">
+                      {tReports("travelIndicators.elapsed")}: {row.elapsedHours}{" "}
+                      {tReports("travelIndicators.units.hours")} |{" "}
+                      {tReports("travelIndicators.exceeded")}: {row.exceededHours}{" "}
+                      {tReports("travelIndicators.units.hours")}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {tReports("travelIndicators.noSlaBreaches")}
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-md border border-border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-finance">
+                {tReports("travelIndicators.budgetRisks")}
+              </h4>
+              <span className="text-[11px] text-muted-foreground">
+                {travelInsights?.budgetRisks.length ?? 0}
+              </span>
+            </div>
+            {travelInsights?.budgetRisks.length ? (
+              <div className="space-y-2">
+                {travelInsights.budgetRisks.slice(0, 5).map((row) => (
+                  <article
+                    key={row.costCenter}
+                    className="rounded-md border border-border px-2 py-2"
+                  >
+                    <p className="text-xs font-medium text-finance">{row.costCenter}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatCurrency(row.totalEstimatedCost, locale, "SAR")} /{" "}
+                      {formatCurrency(row.budgetCap, locale, "SAR")}
+                    </p>
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-[11px] text-muted-foreground">
+                        {tReports("travelIndicators.utilization")}:{" "}
+                        {Math.round(row.utilizationRatio * 100)}
+                        {tReports("travelIndicators.units.percent")}
+                      </span>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          travelRiskLevelStyles[row.riskLevel]
+                        }`}
+                      >
+                        {tReports(`travelIndicators.riskLevel.${row.riskLevel}`)}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {tReports("travelIndicators.noBudgetRisks")}
+              </p>
+            )}
+          </section>
+        </div>
+      </ErpSection>
+
+      <ErpKpiGrid className="xl:grid-cols-6">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tReports("kpi.grossSales")}</p>
           <p className="mt-2 text-lg font-bold text-finance">
@@ -428,14 +614,11 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
             {formatCurrency(pendingCollection, locale, "SAR")}
           </p>
         </article>
-      </div>
+      </ErpKpiGrid>
 
-      <section className="surface-card p-4">
+      <ErpSection className="col-span-12" title={tReports("heatmap.title")} description={tReports("heatmap.subtitle")}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-finance">{tReports("heatmap.title")}</h3>
-          <p className="text-xs text-muted-foreground">
-            {tReports("heatmap.subtitle")}
-          </p>
+          <span className="text-xs text-muted-foreground">{tReports("heatmap.distributionNote")}</span>
         </div>
 
         <div className="overflow-auto">
@@ -485,9 +668,9 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
             </tbody>
           </table>
         </div>
-      </section>
+      </ErpSection>
 
-      <section className="surface-card p-4">
+      <ErpSection className="col-span-12" title={tReports("simulation.title")}>
         <div className="mb-3 grid gap-3 md:grid-cols-2">
           <div>
             <label className="text-xs text-muted-foreground">
@@ -537,9 +720,9 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
           onAirlineSelect={(airline) => setDrill({ type: "airline", key: airline })}
           onAgentSelect={(agent) => setDrill({ type: "agent", key: agent })}
         />
-      </section>
+      </ErpSection>
 
-      <section className="surface-card overflow-hidden">
+      <section className="surface-card col-span-12 overflow-hidden">
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-slate-50 px-4 py-3">
           <h3 className="text-sm font-semibold text-finance">{tReports("drill.title")}</h3>
           {drill ? (
@@ -601,6 +784,6 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
           </div>
         )}
       </section>
-    </section>
+    </ErpPageLayout>
   );
 }

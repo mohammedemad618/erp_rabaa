@@ -3,6 +3,12 @@
 import { Building2, CalendarClock, Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import {
+  ErpKpiGrid,
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/utils/format";
 import type { AccountingDataset } from "../types";
@@ -136,12 +142,14 @@ export function AccountingConsole({ dataset }: AccountingConsoleProps) {
   ];
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tAccounting("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tAccounting("subtitle")}</p>
+    <ErpPageLayout>
+      <ErpPageHeader title={tAccounting("title")} description={tAccounting("subtitle")} />
 
-        <div className="no-print mt-4 grid gap-2 md:grid-cols-[1.4fr_1fr_1fr]">
+      <ErpSection
+        className="col-span-12 no-print"
+        title={locale === "ar" ? "عناصر قابلة للتنفيذ" : "Actionable Controls"}
+      >
+        <div className="grid gap-2 md:grid-cols-[1.4fr_1fr_1fr]">
           <label className="relative">
             <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -181,9 +189,9 @@ export function AccountingConsole({ dataset }: AccountingConsoleProps) {
             </select>
           </label>
         </div>
-      </header>
+      </ErpSection>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <ErpKpiGrid className="xl:grid-cols-5">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tAccounting("kpi.posted")}</p>
           <p className="mt-2 text-2xl font-bold text-finance">{dataset.metrics.postedEntries}</p>
@@ -210,9 +218,9 @@ export function AccountingConsole({ dataset }: AccountingConsoleProps) {
             {formatCurrency(filteredImbalance, locale, "SAR")}
           </p>
         </article>
-      </div>
+      </ErpKpiGrid>
 
-      <section className="surface-card p-4">
+      <ErpSection className="col-span-12">
         <div className="no-print mb-4 flex flex-wrap items-center gap-2">
           {tabs.map((tab) => (
             <Button
@@ -270,7 +278,7 @@ export function AccountingConsole({ dataset }: AccountingConsoleProps) {
         {activeTab === "balance_sheet" ? (
           <BalanceSheetTab locale={locale} data={balanceSheet} />
         ) : null}
-      </section>
-    </section>
+      </ErpSection>
+    </ErpPageLayout>
   );
 }

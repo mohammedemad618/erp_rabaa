@@ -6,6 +6,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+  ErpKpiGrid,
+  ErpMainSplit,
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/utils/format";
 import type {
@@ -406,12 +413,19 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
   }
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tExpenses("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tExpenses("subtitle")}</p>
+    <ErpPageLayout>
+      <ErpPageHeader title={tExpenses("title")} description={tExpenses("subtitle")} />
 
-        <div className="no-print mt-4 grid gap-2 md:grid-cols-[1.4fr_1fr_1fr]">
+      <ErpSection
+        className="col-span-12 no-print"
+        title={locale === "ar" ? "عناصر قابلة للتنفيذ" : "Actionable Controls"}
+        description={
+          locale === "ar"
+            ? "استخدم الفلاتر لتقليل الضوضاء والتركيز على العناصر القابلة للمعالجة."
+            : "Use filters to reduce noise and focus on immediately actionable items."
+        }
+      >
+        <div className="grid gap-2 md:grid-cols-[1.4fr_1fr_1fr]">
           <label className="relative">
             <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -424,9 +438,7 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
 
           <select
             value={departmentFilter}
-            onChange={(event) =>
-              setDepartmentFilter(event.target.value as Department | "all")
-            }
+            onChange={(event) => setDepartmentFilter(event.target.value as Department | "all")}
             className="h-9 rounded-md border border-border bg-white px-3 text-sm"
           >
             <option value="all">{tExpenses("filters.allDepartments")}</option>
@@ -439,9 +451,7 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
 
           <select
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as ExpenseStatus | "all")
-            }
+            onChange={(event) => setStatusFilter(event.target.value as ExpenseStatus | "all")}
             className="h-9 rounded-md border border-border bg-white px-3 text-sm"
           >
             {statusValues.map((status) => (
@@ -455,13 +465,11 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
         </div>
 
         {notice ? (
-          <p className="mt-3 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">
-            {notice}
-          </p>
+          <p className="mt-3 rounded-md bg-slate-100 px-3 py-2 text-xs text-finance">{notice}</p>
         ) : null}
-      </header>
+      </ErpSection>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <ErpKpiGrid className="xl:grid-cols-5">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tExpenses("kpi.totalAmount")}</p>
           <p className="mt-2 text-lg font-bold text-finance">
@@ -488,12 +496,19 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
           <p className="text-xs text-muted-foreground">{tExpenses("kpi.overBudget")}</p>
           <p className="mt-2 text-lg font-bold text-finance">{exceededCenters}</p>
         </article>
-      </div>
+      </ErpKpiGrid>
 
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <section className="surface-card p-4">
-          <h3 className="text-sm font-semibold text-finance">{tExpenses("entry.title")}</h3>
-          <form className="mt-3 space-y-3" onSubmit={form.handleSubmit(submitExpense)}>
+      <ErpMainSplit
+        primary={
+          <ErpSection
+            title={tExpenses("entry.title")}
+            description={
+              locale === "ar"
+                ? "إدخال المطالبة في حقول مرتبة حسب التسلسل التشغيلي."
+                : "Create an expense entry with fields grouped by operational sequence."
+            }
+          >
+            <form className="space-y-3" onSubmit={form.handleSubmit(submitExpense)}>
             <div className="grid gap-2 md:grid-cols-2">
               <label className="text-xs text-muted-foreground">
                 {tExpenses("entry.date")}
@@ -626,12 +641,12 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
             <Button type="submit" size="sm" className="w-full">
               {tExpenses("entry.submit")}
             </Button>
-          </form>
-        </section>
-
-        <div className="space-y-4">
-          <section className="surface-card p-4">
-            <h3 className="text-sm font-semibold text-finance">{tExpenses("costCenters.title")}</h3>
+            </form>
+          </ErpSection>
+        }
+        secondary={
+          <>
+            <ErpSection title={tExpenses("costCenters.title")}>
             <div className="mt-3 space-y-2">
               {costCenterStats.map((center) => (
                 <article key={center.id} className="rounded-md border border-border p-3">
@@ -658,10 +673,9 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
                 </article>
               ))}
             </div>
-          </section>
+            </ErpSection>
 
-          <section className="surface-card p-4">
-            <h3 className="text-sm font-semibold text-finance">{tExpenses("routing.title")}</h3>
+            <ErpSection title={tExpenses("routing.title")}>
             {!selectedExpense ? (
               <p className="mt-3 text-sm text-muted-foreground">
                 {tExpenses("empty.selection")}
@@ -725,11 +739,12 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
                 </div>
               </>
             )}
-          </section>
-        </div>
-      </div>
+            </ErpSection>
+          </>
+        }
+      />
 
-      <section className="surface-card overflow-hidden">
+      <section className="surface-card col-span-12 overflow-hidden">
         <header className="border-b border-border bg-slate-50 px-4 py-3">
           <h3 className="text-sm font-semibold text-finance">{tExpenses("table.title")}</h3>
         </header>
@@ -785,6 +800,6 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
           </table>
         </div>
       </section>
-    </section>
+    </ErpPageLayout>
   );
 }

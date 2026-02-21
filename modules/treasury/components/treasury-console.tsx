@@ -5,6 +5,12 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { Button } from "@/components/ui/button";
+import {
+  ErpKpiGrid,
+  ErpPageHeader,
+  ErpPageLayout,
+  ErpSection,
+} from "@/components/layout/erp-page-layout";
 import type { ReconciliationMatch, TreasuryDataset } from "../types";
 import { ReconciliationWorkbench } from "./reconciliation-workbench";
 
@@ -203,12 +209,14 @@ export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
   const displayedPosRows = filteredPosRows.slice(0, 12);
 
   return (
-    <section className="space-y-4">
-      <header className="surface-card p-6">
-        <h2 className="text-2xl font-bold text-finance">{tTreasury("title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{tTreasury("subtitle")}</p>
+    <ErpPageLayout>
+      <ErpPageHeader title={tTreasury("title")} description={tTreasury("subtitle")} />
 
-        <div className="no-print mt-4 grid gap-2 md:grid-cols-[1.4fr_1fr_auto]">
+      <ErpSection
+        className="col-span-12 no-print"
+        title={tTreasury("actionableTitle")}
+      >
+        <div className="grid gap-2 md:grid-cols-[1.4fr_1fr_auto]">
           <label className="relative">
             <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -243,9 +251,9 @@ export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
             {tTreasury("filters.reset")}
           </Button>
         </div>
-      </header>
+      </ErpSection>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+      <ErpKpiGrid className="xl:grid-cols-6">
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tTreasury("kpi.cashIn")}</p>
           <p className="mt-2 text-lg font-bold text-finance">
@@ -282,9 +290,9 @@ export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
             {unmatchedSystemCount}/{unmatchedStatementCount}
           </p>
         </article>
-      </div>
+      </ErpKpiGrid>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="col-span-12 grid gap-4 xl:grid-cols-2">
         <section className="surface-card overflow-hidden">
           <header className="border-b border-border bg-slate-50 px-4 py-3">
             <h3 className="text-sm font-semibold text-finance">
@@ -370,7 +378,7 @@ export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
         </section>
       </div>
 
-      <section className="surface-card p-4">
+      <section className="surface-card col-span-12 p-4">
         <h3 className="text-sm font-semibold text-finance">{tTreasury("bankOverview.title")}</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {displayedAccounts.map((account) => (
@@ -403,13 +411,15 @@ export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
         </div>
       </section>
 
-      <ReconciliationWorkbench
-        systemRows={filteredSystemRows}
-        statementRows={filteredStatementRows}
-        matches={filteredMatches}
-        onCreateMatch={createMatch}
-        onRemoveMatch={removeMatch}
-      />
-    </section>
+      <div className="col-span-12">
+        <ReconciliationWorkbench
+          systemRows={filteredSystemRows}
+          statementRows={filteredStatementRows}
+          matches={filteredMatches}
+          onCreateMatch={createMatch}
+          onRemoveMatch={removeMatch}
+        />
+      </div>
+    </ErpPageLayout>
   );
 }

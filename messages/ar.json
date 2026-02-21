@@ -6,6 +6,7 @@
   },
   "nav": {
     "dashboard": "لوحة التحكم",
+    "travel": "طلبات السفر",
     "settings": "الإعدادات",
     "transactions": "المعاملات",
     "accounting": "المحاسبة",
@@ -48,7 +49,9 @@
     "admin": "مدير النظام",
     "finance_manager": "مدير مالي",
     "agent": "موظف حجوزات",
-    "auditor": "مدقق"
+    "auditor": "مدقق",
+    "manager": "مدير",
+    "travel_desk": "مكتب السفر"
   },
   "dashboard": {
     "title": "مركز التحكم المؤسسي",
@@ -65,6 +68,10 @@
     "title": "محرك المعاملات",
     "subtitle": "جدول مؤسسي افتراضي مع معاينة الأثر المحاسبي وخط زمني للموافقات.",
     "filters": {
+      "queueTitle": "طوابير الأولوية",
+      "queueAll": "كل المعاملات",
+      "queueOcrReviewed": "تمت مراجعة OCR",
+      "resetFilters": "إعادة ضبط الفلاتر",
       "quickPendingApproval": "بانتظار موافقة",
       "quickHighValue": "قيمة عالية",
       "quickCashOnly": "نقدي فقط"
@@ -91,11 +98,24 @@
       "voided": "ملغى"
     },
     "panel": {
+      "summary": "ملخص المعاملة",
+      "quickActions": "إجراءات سريعة",
       "accountingImpact": "معاينة الأثر المحاسبي",
       "approvalTimeline": "التسلسل الزمني للموافقة",
       "auditMeta": "بيانات التدقيق",
+      "customerPhone": "هاتف العميل",
+      "branch": "الفرع",
+      "agent": "الموظف",
+      "paymentMethod": "طريقة الدفع",
+      "issuedAt": "تاريخ الإصدار",
       "createdBy": "أُنشئت بواسطة",
-      "updatedBy": "آخر تعديل بواسطة"
+      "updatedBy": "آخر تعديل بواسطة",
+      "version": "الإصدار"
+    },
+    "paymentMethods": {
+      "cash": "نقدي",
+      "card": "بطاقة",
+      "bank": "تحويل بنكي"
     },
     "actions": {
       "batchApprove": "اعتماد جماعي",
@@ -113,6 +133,35 @@
       "nextLowConfidence": "Alt + N للحقل منخفض الثقة التالي",
       "acceptField": "Alt + A لاعتماد الحقل",
       "zoomDocument": "Alt + D لفتح التكبير"
+    },
+    "actionable": {
+      "title": "عناصر قابلة للتنفيذ",
+      "description": "اعرض العناصر التي تحتاج معالجة فورية ونفّذ الإجراءات الجماعية بسرعة."
+    },
+    "kpi": {
+      "matchedRecords": "سجلات مطابقة",
+      "pendingApproval": "بانتظار الموافقة",
+      "highValue": "قيمة عالية",
+      "selectedRows": "محدد حاليًا"
+    },
+    "tableTitle": "جدول المعاملات",
+    "pagination": {
+      "rowsInPage": "صفوف في الصفحة",
+      "matchedRecords": "سجلات مطابقة",
+      "rowsPerPage": "عدد الصفوف",
+      "page": "صفحة",
+      "prev": "السابق",
+      "next": "التالي"
+    },
+    "messages": {
+      "searchFocused": "تم تركيز حقل البحث",
+      "nextLowConfidenceFocused": "تم الانتقال إلى المعاملة التالية منخفضة الثقة",
+      "noLowConfidence": "لا توجد معاملات منخفضة الثقة إضافية",
+      "ocrFieldAccepted": "تم اعتماد حقل OCR (واجهة فقط)",
+      "documentZoomOpened": "تم فتح تكبير المستند (واجهة فقط)"
+    },
+    "empty": {
+      "noSelection": "لا توجد معاملة محددة."
     }
   },
   "salesFlow": {
@@ -388,7 +437,8 @@
       "systemUnmatched": "لا توجد صفوف نظام غير مطابقة.",
       "statementUnmatched": "لا توجد صفوف كشف غير مطابقة.",
       "matchedPairs": "لا توجد أزواج مطابقة حتى الآن."
-    }
+    },
+    "actionableTitle": "عناصر قابلة للتنفيذ"
   },
   "crmModule": {
     "title": "عرض CRM المؤسسي",
@@ -474,6 +524,32 @@
       "refundRate": "نسبة الاسترجاع",
       "pendingCollection": "التحصيلات المعلقة"
     },
+    "travelIndicators": {
+      "title": "المؤشرات التنفيذية للسفر",
+      "subtitle": "مؤشرات تشغيلية ومالية لسير عمل السفر تم نقلها من شاشة طلبات السفر.",
+      "loading": "...",
+      "complianceRate": "نسبة الالتزام بالسياسة",
+      "blockedRate": "نسبة الطلبات المحجوبة بالسياسة",
+      "avgLeadTime": "متوسط مهلة الطلب",
+      "avgApprovalCycle": "متوسط دورة الاعتماد",
+      "slaBreaches": "تجاوزات SLA",
+      "budgetRisks": "مخاطر الميزانية",
+      "noSlaBreaches": "لا توجد تجاوزات SLA.",
+      "noBudgetRisks": "لا توجد صفوف مخاطر ميزانية.",
+      "elapsed": "المنقضي",
+      "exceeded": "المتجاوز",
+      "utilization": "نسبة الاستخدام",
+      "units": {
+        "percent": "%",
+        "days": "يوم",
+        "hours": "ساعة"
+      },
+      "riskLevel": {
+        "low": "منخفض",
+        "medium": "متوسط",
+        "high": "مرتفع"
+      }
+    },
     "heatmap": {
       "title": "خريطة حرارة المبيعات",
       "subtitle": "تركّز الإيرادات حسب أيام الأسبوع والفترات الزمنية.",
@@ -492,7 +568,8 @@
         "4": "الخميس",
         "5": "الجمعة",
         "6": "السبت"
-      }
+      },
+      "distributionNote": "توزيع المبيعات حسب اليوم والفترة الزمنية."
     },
     "charts": {
       "marginByAirline": "الهامش حسب شركة الطيران",
@@ -509,7 +586,8 @@
     "simulation": {
       "growth": "سيناريو نمو المبيعات",
       "cost": "سيناريو تضخم التكلفة",
-      "forecast7": "توقع صافي 7 أيام"
+      "forecast7": "توقع صافي 7 أيام",
+      "title": "محاكاة وسيناريوهات"
     },
     "drill": {
       "title": "تحليل تفصيلي",
@@ -522,7 +600,9 @@
       "margin": "الهامش",
       "status": "الحالة",
       "noRows": "لا توجد عمليات مطابقة لفلتر التحليل المحدد."
-    }
+    },
+    "actionableTitle": "عناصر قابلة للتنفيذ",
+    "loadingVisuals": "جاري تحميل الرسوم التحليلية..."
   },
   "expenseModule": {
     "title": "المصاريف ومراكز التكلفة",
@@ -798,5 +878,23 @@
       "draft": "مسودة",
       "active": "نشط"
     }
+  },
+  "auth": {
+    "logout": "تسجيل الخروج",
+    "login": {
+      "title": "تسجيل الدخول المؤسسي",
+      "subtitle": "استخدم أحد الحسابات التجريبية للوصول إلى الوحدات المحمية.",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "submit": "تسجيل الدخول",
+      "failed": "بيانات الدخول غير صحيحة. تحقق من البريد وكلمة المرور.",
+      "demoTitle": "حسابات تجريبية",
+      "role": "الدور"
+    }
+  },
+  "forbidden": {
+    "title": "وصول غير مصرح",
+    "description": "ليس لديك الصلاحية المطلوبة للوصول إلى هذه الصفحة.",
+    "backToDashboard": "العودة للوحة الرئيسية"
   }
 }

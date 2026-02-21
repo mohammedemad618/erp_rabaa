@@ -6,6 +6,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "travel": "Travel Requests",
     "settings": "Settings",
     "transactions": "Transactions",
     "accounting": "Accounting",
@@ -48,7 +49,9 @@
     "admin": "Admin",
     "finance_manager": "Finance Manager",
     "agent": "Agent",
-    "auditor": "Auditor"
+    "auditor": "Auditor",
+    "manager": "Manager",
+    "travel_desk": "Travel Desk"
   },
   "dashboard": {
     "title": "Enterprise Control Tower",
@@ -64,10 +67,33 @@
   "transactions": {
     "title": "Transaction Engine",
     "subtitle": "Virtualized enterprise grid with accounting impact preview and approval timeline.",
+    "actionable": {
+      "title": "Actionable Controls",
+      "description": "Surface records that need immediate handling and execute bulk actions quickly."
+    },
     "filters": {
+      "queueTitle": "Priority Queues",
+      "queueAll": "All Transactions",
+      "queueOcrReviewed": "OCR Reviewed",
+      "resetFilters": "Reset Filters",
       "quickPendingApproval": "Pending Approval",
       "quickHighValue": "High Value",
       "quickCashOnly": "Cash Only"
+    },
+    "kpi": {
+      "matchedRecords": "Matched Records",
+      "pendingApproval": "Pending Approval",
+      "highValue": "High Value",
+      "selectedRows": "Selected Rows"
+    },
+    "tableTitle": "Transactions Table",
+    "pagination": {
+      "rowsInPage": "rows in page",
+      "matchedRecords": "matched records",
+      "rowsPerPage": "Rows",
+      "page": "Page",
+      "prev": "Prev",
+      "next": "Next"
     },
     "table": {
       "id": "ID",
@@ -91,11 +117,24 @@
       "voided": "Voided"
     },
     "panel": {
+      "summary": "Transaction Summary",
+      "quickActions": "Quick Actions",
       "accountingImpact": "Accounting Impact Preview",
       "approvalTimeline": "Approval Timeline",
       "auditMeta": "Audit Metadata",
+      "customerPhone": "Customer Phone",
+      "branch": "Branch",
+      "agent": "Agent",
+      "paymentMethod": "Payment Method",
+      "issuedAt": "Issued At",
       "createdBy": "Created by",
-      "updatedBy": "Updated by"
+      "updatedBy": "Updated by",
+      "version": "Version"
+    },
+    "paymentMethods": {
+      "cash": "Cash",
+      "card": "Card",
+      "bank": "Bank Transfer"
     },
     "actions": {
       "batchApprove": "Batch Approve",
@@ -113,6 +152,16 @@
       "nextLowConfidence": "Alt + N next low confidence",
       "acceptField": "Alt + A accept field",
       "zoomDocument": "Alt + D open zoom"
+    },
+    "messages": {
+      "searchFocused": "Search focused",
+      "nextLowConfidenceFocused": "Focused next low-confidence transaction",
+      "noLowConfidence": "No additional low-confidence transaction found",
+      "ocrFieldAccepted": "OCR field accepted (UI only)",
+      "documentZoomOpened": "Document zoom opened (UI only)"
+    },
+    "empty": {
+      "noSelection": "No transaction selected."
     }
   },
   "salesFlow": {
@@ -328,6 +377,7 @@
   "treasury": {
     "title": "Treasury Management",
     "subtitle": "Cash, POS, and bank reconciliation workspace with manual drag-to-match controls.",
+    "actionableTitle": "Actionable Controls",
     "filters": {
       "searchPlaceholder": "Search by reference or description",
       "allAccounts": "All Bank Accounts",
@@ -452,6 +502,8 @@
   "reportsModule": {
     "title": "Reporting & BI Dashboard",
     "subtitle": "Sales heatmap, margin analytics, and cash-flow simulation with interactive drill-down.",
+    "actionableTitle": "Actionable Controls",
+    "loadingVisuals": "Loading BI visuals...",
     "filters": {
       "searchPlaceholder": "Search by airline, employee, or transaction ID",
       "allBranches": "All Branches",
@@ -474,9 +526,36 @@
       "refundRate": "Refund Rate",
       "pendingCollection": "Pending Collection"
     },
+    "travelIndicators": {
+      "title": "Travel Executive Indicators",
+      "subtitle": "Operational and financial travel workflow indicators moved from Travel Requests.",
+      "loading": "...",
+      "complianceRate": "Policy Compliance Rate",
+      "blockedRate": "Policy Blocked Rate",
+      "avgLeadTime": "Average Lead Time",
+      "avgApprovalCycle": "Average Approval Cycle",
+      "slaBreaches": "SLA Breaches",
+      "budgetRisks": "Budget Risks",
+      "noSlaBreaches": "No SLA breaches detected.",
+      "noBudgetRisks": "No budget risk rows detected.",
+      "elapsed": "Elapsed",
+      "exceeded": "Exceeded",
+      "utilization": "Utilization",
+      "units": {
+        "percent": "%",
+        "days": "day(s)",
+        "hours": "hour(s)"
+      },
+      "riskLevel": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
+    },
     "heatmap": {
       "title": "Sales Heatmap",
       "subtitle": "Revenue concentration by weekday and time window.",
+      "distributionNote": "Revenue distribution by weekday and time bucket.",
       "day": "Day",
       "hours": {
         "00_05": "00:00-05:59",
@@ -507,6 +586,7 @@
       "clickToDrill": "Click a bar to open drill-down rows."
     },
     "simulation": {
+      "title": "Simulation Scenarios",
       "growth": "Sales Growth Scenario",
       "cost": "Cost Inflation Scenario",
       "forecast7": "7-day Forecast Net"
@@ -798,5 +878,23 @@
       "draft": "Draft",
       "active": "Active"
     }
+  },
+  "auth": {
+    "logout": "Logout",
+    "login": {
+      "title": "Enterprise Sign In",
+      "subtitle": "Use one of the demo enterprise accounts to access protected modules.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign In",
+      "failed": "Invalid credentials. Check email/password and try again.",
+      "demoTitle": "Demo Accounts",
+      "role": "Role"
+    }
+  },
+  "forbidden": {
+    "title": "Access Forbidden",
+    "description": "You do not have the required permission to access this page.",
+    "backToDashboard": "Back to Dashboard"
   }
 }

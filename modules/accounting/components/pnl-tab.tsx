@@ -32,34 +32,34 @@ export function PnlTab({ locale, data }: PnlTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-md border border-border bg-slate-50 p-3">
-          <p className="text-xs text-muted-foreground">{tAccounting("pnl.revenue")}</p>
-          <p className="mt-1 text-lg font-semibold text-finance">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <p className="text-sm font-medium text-slate-500">{tAccounting("pnl.revenue")}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
             {formatCurrency(data.revenue, locale, "SAR")}
           </p>
         </article>
-        <article className="rounded-md border border-border bg-slate-50 p-3">
-          <p className="text-xs text-muted-foreground">{tAccounting("pnl.expense")}</p>
-          <p className="mt-1 text-lg font-semibold text-finance">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <p className="text-sm font-medium text-slate-500">{tAccounting("pnl.expense")}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
             {formatCurrency(data.expense, locale, "SAR")}
           </p>
         </article>
-        <article className="rounded-md border border-border bg-slate-50 p-3">
-          <p className="text-xs text-muted-foreground">{tAccounting("pnl.netIncome")}</p>
-          <p className="mt-1 text-lg font-semibold text-finance">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <p className="text-sm font-medium text-slate-500">{tAccounting("pnl.netIncome")}</p>
+          <p className="mt-2 text-2xl font-bold text-emerald-600">
             {formatCurrency(data.netIncome, locale, "SAR")}
           </p>
         </article>
-        <article className="rounded-md border border-border bg-slate-50 p-3">
-          <p className="text-xs text-muted-foreground">{tAccounting("pnl.margin")}</p>
-          <p className="mt-1 text-lg font-semibold text-finance">{data.margin}%</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <p className="text-sm font-medium text-slate-500">{tAccounting("pnl.margin")}</p>
+          <p className="mt-2 text-2xl font-bold text-emerald-600">{data.margin}%</p>
         </article>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <section className="rounded-md border border-border p-3">
-          <h3 className="mb-2 text-sm font-semibold text-finance">
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-base font-semibold text-slate-900">
             {tAccounting("pnl.branchBreakdown")}
           </h3>
           <div className="h-[280px]">
@@ -78,8 +78,8 @@ export function PnlTab({ locale, data }: PnlTabProps) {
           </div>
         </section>
 
-        <section className="rounded-md border border-border p-3">
-          <h3 className="mb-2 text-sm font-semibold text-finance">
+        <section className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-base font-semibold text-slate-900">
             {tAccounting("pnl.airlineBreakdown")}
           </h3>
           <div className="h-[280px]">

@@ -188,6 +188,7 @@ export function AppShell({ children }: AppShellProps) {
     customer: false,
     documents: false,
   });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [contentVersion, setContentVersion] = useState(0);
   const [authLoading, setAuthLoading] = useState(true);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
@@ -316,13 +317,22 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[260px_1fr]">
-      <aside className="no-print border-e border-border bg-white/90 p-4 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className="flex h-[calc(100vh-2rem)] flex-col">
-          <div className="mb-6">
-            <p className="text-sm font-semibold tracking-wide text-primary">{tApp("name")}</p>
-            <h1 className="mt-1 text-lg font-bold text-finance">{tApp("product")}</h1>
-            <p className="mt-1 text-xs text-muted-foreground">{tApp("subtitle")}</p>
+    <div
+      className={cn(
+        "grid min-h-screen transition-all duration-300",
+        isSidebarCollapsed ? "lg:grid-cols-[80px_1fr]" : "lg:grid-cols-[260px_1fr]"
+      )}
+    >
+      <aside className="no-print border-e border-border glass-panel flex flex-col justify-between">
+        <div className="flex h-[calc(100vh-4rem)] flex-col p-4">
+          <div className={cn("mb-6 flex items-center", isSidebarCollapsed ? "justify-center" : "justify-between")}>
+            {!isSidebarCollapsed && (
+              <div>
+                <p className="text-sm font-semibold tracking-wide text-primary">{tApp("name")}</p>
+                <h1 className="mt-1 text-lg font-bold text-finance">{tApp("product")}</h1>
+                <p className="mt-1 text-xs text-muted-foreground">{tApp("subtitle")}</p>
+              </div>
+            )}
           </div>
 
           <nav className="space-y-2 overflow-y-auto pe-1">
@@ -345,27 +355,34 @@ export function AppShell({ children }: AppShellProps) {
               const isExpanded = hasActiveItem || expandedGroups[group.id];
 
               return (
-                <section key={group.id} className="rounded-md border border-border/70 bg-white/70">
+                <section key={group.id} className="rounded-md border border-slate-200/50 bg-white/40 mb-2">
                   <button
                     type="button"
-                    onClick={() => toggleGroup(group.id)}
+                    onClick={() => {
+                      if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+                      toggleGroup(group.id);
+                    }}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-xs font-semibold transition",
+                      "flex w-full items-center rounded-md px-2.5 py-2 text-xs font-semibold transition",
                       hasActiveItem
-                        ? "text-primary"
+                        ? "text-primary bg-primary/5"
                         : "text-muted-foreground hover:bg-slate-100 hover:text-foreground",
+                      isSidebarCollapsed ? "justify-center" : "justify-between"
                     )}
+                    title={isSidebarCollapsed ? group.label : undefined}
                   >
                     <span className="flex items-center gap-2">
-                      <GroupIcon className="h-3.5 w-3.5" />
-                      {group.label}
+                      <GroupIcon className={cn("h-4 w-4", isSidebarCollapsed && "h-5 w-5")} />
+                      {!isSidebarCollapsed && group.label}
                     </span>
-                    <ChevronDown
-                      className={cn("h-3.5 w-3.5 transition", isExpanded ? "rotate-180" : "")}
-                    />
+                    {!isSidebarCollapsed && (
+                      <ChevronDown
+                        className={cn("h-3.5 w-3.5 transition", isExpanded ? "rotate-180" : "")}
+                      />
+                    )}
                   </button>
 
-                  {isExpanded ? (
+                  {isExpanded && !isSidebarCollapsed ? (
                     <div className="mb-1 space-y-2 border-s border-border/70 pb-2 ps-2 pe-1">
                       {visibleSubgroups.map((subgroup) => (
                         <div key={`${group.id}-${subgroup.id}`} className="space-y-1">
@@ -401,10 +418,21 @@ export function AppShell({ children }: AppShellProps) {
             })}
           </nav>
         </div>
+
+        <div className="p-4 border-t border-border/50">
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="flex w-full items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-slate-100 hover:text-foreground transition"
+            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            <ChevronDown className={cn("h-5 w-5 transition-transform", isSidebarCollapsed ? "-rotate-90" : "rotate-90")} />
+          </button>
+        </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col">
-        <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-border bg-white/85 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 lg:px-6">
+      <div className="flex min-h-screen flex-col bg-slate-50/30">
+        <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-border glass-panel px-4 py-3 lg:px-6">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="rounded-full bg-slate-100 px-2 py-1">
               {sessionUser?.name ?? "-"}

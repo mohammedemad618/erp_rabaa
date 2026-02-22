@@ -206,6 +206,8 @@ export interface TravelActorContext {
   actorName: string;
 }
 
+
+
 export interface CreateTravelRequestInput {
   employeeName: string;
   employeeEmail: string;
@@ -221,4 +223,25 @@ export interface CreateTravelRequestInput {
   travelClass: TravelClass;
   estimatedCost: number;
   currency: string;
+}
+
+export interface BookingFormState {
+  vendor: string;
+  bookingReference: string;
+  ticketNumber: string;
+  bookedAt: string;
+  totalBookedCost: string | number;
+  currency: string;
+}
+
+export interface ExpenseFormState {
+  category: TravelExpenseCategory;
+  amount: string | number;
+  currency: string;
+  expenseDate: string;
+  merchant: string;
+  description: string;
+  receiptFileName: string;
+  receiptMimeType: string;
+  receiptSizeInBytes: string | number;
 }

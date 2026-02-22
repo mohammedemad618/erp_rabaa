@@ -15,7 +15,7 @@ import type {
 
 type SupportedLocale = "en" | "ar";
 
-interface TravelDictionary {
+export interface TravelDictionary {
   title: string;
   subtitle: string;
   notices: {

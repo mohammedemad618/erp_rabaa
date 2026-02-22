@@ -46,16 +46,17 @@ export function ErpPageHeader({
   className,
 }: ErpPageHeaderProps) {
   return (
-    <header className={cn("surface-card col-span-12 p-5 lg:p-6", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <header className={cn("surface-card col-span-12 p-6 lg:p-8 bg-gradient-to-br from-white to-slate-50/50 mb-2 relative overflow-hidden", className)}>
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50" />
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-finance">{title}</h1>
+          <h1 className="text-3xl font-extrabold text-finance tracking-tight">{title}</h1>
           {description ? (
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground/90">{description}</p>
           ) : null}
-          {meta ? <div className="mt-3 text-xs text-muted-foreground">{meta}</div> : null}
+          {meta ? <div className="mt-4 text-xs font-medium text-muted-foreground">{meta}</div> : null}
         </div>
-        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="flex shrink-0 items-center gap-3">{actions}</div> : null}
       </div>
     </header>
   );
@@ -69,23 +70,25 @@ export function ErpSection({
   className,
 }: ErpSectionProps) {
   return (
-    <section className={cn("surface-card p-4", className)}>
+    <section className={cn("surface-card p-5 lg:p-6 transition-all", className)}>
       {title || description || actions ? (
-        <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="mb-5 flex items-start justify-between gap-4 border-b border-border/40 pb-4">
           <div>
-            {title ? <h2 className="text-sm font-semibold text-finance">{title}</h2> : null}
-            {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
+            {title ? <h2 className="text-base font-bold text-finance tracking-tight">{title}</h2> : null}
+            {description ? <p className="mt-1 text-xs text-muted-foreground/80">{description}</p> : null}
           </div>
           {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
         </div>
       ) : null}
-      {children}
+      <div className="mt-2">
+        {children}
+      </div>
     </section>
   );
 }
 
 export function ErpKpiGrid({ children, className }: ErpKpiGridProps) {
-  return <div className={cn("col-span-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4", className)}>{children}</div>;
+  return <div className={cn("col-span-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4", className)}>{children}</div>;
 }
 
 export function ErpMainSplit({

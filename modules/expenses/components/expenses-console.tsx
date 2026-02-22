@@ -1,11 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import {
   ErpKpiGrid,
   ErpMainSplit,
@@ -14,6 +11,9 @@ import {
   ErpSection,
 } from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
+import { SlideOver } from "@/components/ui/slide-over";
+import { ExpenseRequestForm, type ExpenseFormValues } from "./expense-request-form";
+import { ExpenseDetailsView } from "./expense-details-view";
 import { formatCurrency, formatDate } from "@/utils/format";
 import type {
   Department,
@@ -33,22 +33,9 @@ const statusValues: Array<ExpenseStatus | "all"> = [
   "rejected",
 ];
 
-const paymentMethodValues = ["cash", "card", "bank"] as const;
 const EXPENSES_STORAGE_KEY = "enterprise-travel-erp.expenses.v1";
 
-const formSchema = z.object({
-  date: z.string().min(4),
-  department: z.enum(departmentValues),
-  costCenterId: z.string().min(3),
-  category: z.string().min(2),
-  description: z.string().min(5),
-  vendor: z.string().min(2),
-  employee: z.string().min(2),
-  amount: z.number().positive(),
-  paymentMethod: z.enum(paymentMethodValues),
-});
 
-type ExpenseFormValues = z.infer<typeof formSchema>;
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
@@ -100,18 +87,6 @@ function buildInitialRoute(employee: string, date: string): ExpenseRouteStep[] {
   ];
 }
 
-function statusClass(status: ExpenseStatus): string {
-  if (status === "approved") {
-    return "bg-emerald-100 text-emerald-700";
-  }
-  if (status === "rejected") {
-    return "bg-rose-100 text-rose-700";
-  }
-  if (status === "pending_manager" || status === "pending_finance") {
-    return "bg-amber-100 text-amber-700";
-  }
-  return "bg-slate-100 text-slate-700";
-}
 
 interface ExpensesConsoleProps {
   dataset: ExpenseDataset;
@@ -123,35 +98,53 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
   const idCounter = useRef(dataset.expenses.length + 1);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>(dataset.expenses);
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
+    try {
+      const raw = window.localStorage.getItem(EXPENSES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          expenses?: ExpenseRecord[];
+          selectedExpenseId?: string;
+        };
+        if (Array.isArray(parsed.expenses) && parsed.expenses.length > 0) {
+          return parsed.expenses;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+    return dataset.expenses;
+  });
+
+  const [selectedExpenseId, setSelectedExpenseId] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(EXPENSES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          expenses?: ExpenseRecord[];
+          selectedExpenseId?: string;
+        };
+        if (parsed.selectedExpenseId) {
+          return parsed.selectedExpenseId;
+        }
+        if (Array.isArray(parsed.expenses) && parsed.expenses.length > 0) {
+          return parsed.expenses[0]?.id ?? "";
+        }
+      }
+    } catch {
+      // Ignore
+    }
+    return dataset.expenses[0]?.id ?? "";
+  });
   const [search, setSearch] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<Department | "all">("all");
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "all">("all");
-  const [selectedExpenseId, setSelectedExpenseId] = useState(
-    dataset.expenses[0]?.id ?? "",
-  );
   const [notice, setNotice] = useState("");
+  const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(EXPENSES_STORAGE_KEY);
-      if (!raw) {
-        return;
-      }
-      const parsed = JSON.parse(raw) as {
-        expenses?: ExpenseRecord[];
-        selectedExpenseId?: string;
-      };
-      if (!Array.isArray(parsed.expenses) || parsed.expenses.length === 0) {
-        return;
-      }
-      setExpenses(parsed.expenses);
-      setSelectedExpenseId(parsed.selectedExpenseId ?? parsed.expenses[0]?.id ?? "");
-      idCounter.current = nextExpenseCounter(parsed.expenses);
-    } catch {
-      return;
-    }
-  }, []);
+    idCounter.current = nextExpenseCounter(expenses);
+  }, [expenses]);
 
   useEffect(() => {
     try {
@@ -172,31 +165,7 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
     };
   }, []);
 
-  const form = useForm<ExpenseFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      date: new Date().toISOString().slice(0, 10),
-      department: "operations",
-      costCenterId:
-        dataset.costCenters.find((center) => center.department === "operations")?.id ??
-        dataset.costCenters[0]?.id ??
-        "",
-      category: dataset.categories[0] ?? "Office Supplies",
-      description: "",
-      vendor: "",
-      employee: "",
-      amount: 0,
-      paymentMethod: "bank",
-    },
-  });
 
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const watchedDepartment = form.watch("department");
-  const departmentCenters = useMemo(
-    () =>
-      dataset.costCenters.filter((center) => center.department === watchedDepartment),
-    [dataset.costCenters, watchedDepartment],
-  );
 
   const filteredExpenses = useMemo(() => {
     const query = toLower(search);
@@ -301,12 +270,7 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
 
     setExpenses((previous) => [nextExpense, ...previous]);
     setSelectedExpenseId(nextExpense.id);
-    form.reset({
-      ...values,
-      description: "",
-      amount: 0,
-      date: new Date().toISOString().slice(0, 10),
-    });
+    setIsRequestFormOpen(false);
     notify(tExpenses("messages.created"));
   }
 
@@ -399,11 +363,11 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
           approvalRoute: expense.approvalRoute.map((step, index) =>
             index === targetStepIndex
               ? {
-                  ...step,
-                  status: "rejected",
-                  at: now,
-                  note: "Rejected in approval routing",
-                }
+                ...step,
+                status: "rejected",
+                at: now,
+                note: "Rejected in approval routing",
+              }
               : step,
           ),
         };
@@ -500,306 +464,125 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
 
       <ErpMainSplit
         primary={
-          <ErpSection
-            title={tExpenses("entry.title")}
-            description={
-              locale === "ar"
-                ? "إدخال المطالبة في حقول مرتبة حسب التسلسل التشغيلي."
-                : "Create an expense entry with fields grouped by operational sequence."
-            }
-          >
-            <form className="space-y-3" onSubmit={form.handleSubmit(submitExpense)}>
-            <div className="grid gap-2 md:grid-cols-2">
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.date")}
-                <input
-                  type="date"
-                  {...form.register("date")}
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                />
-              </label>
-
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.department")}
-                <select
-                  value={watchedDepartment}
-                  onChange={(event) => {
-                    const department = event.target.value as Department;
-                    form.setValue("department", department, {
-                      shouldValidate: true,
-                    });
-                    const firstCenter = dataset.costCenters.find(
-                      (center) => center.department === department,
-                    );
-                    if (firstCenter) {
-                      form.setValue("costCenterId", firstCenter.id, {
-                        shouldValidate: true,
-                      });
-                    }
-                  }}
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                >
-                  {departmentValues.map((department) => (
-                    <option key={department} value={department}>
-                      {tExpenses(`departments.${department}`)}
-                    </option>
+          <section className="surface-card overflow-hidden">
+            <header className="flex items-center justify-between border-b border-border bg-slate-50 px-4 py-3">
+              <h3 className="text-sm font-semibold text-finance">{tExpenses("table.title")}</h3>
+              <Button size="sm" onClick={() => setIsRequestFormOpen(true)}>
+                <Plus className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+                {tExpenses("entry.submit")}
+              </Button>
+            </header>
+            <div className="max-h-[420px] overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="px-4 py-3 text-start">{tExpenses("table.id")}</th>
+                    <th className="px-4 py-3 text-start">{tExpenses("table.date")}</th>
+                    <th className="px-4 py-3 text-start">{tExpenses("table.department")}</th>
+                    <th className="px-4 py-3 text-start">{tExpenses("table.costCenter")}</th>
+                    <th className="px-4 py-3 text-start">{tExpenses("table.employee")}</th>
+                    <th className="px-4 py-3 text-end">{tExpenses("table.amount")}</th>
+                    <th className="px-4 py-3 text-start">{tExpenses("table.status")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredExpenses.map((expense) => (
+                    <tr
+                      key={expense.id}
+                      onClick={() => setSelectedExpenseId(expense.id)}
+                      className={`cursor-pointer border-b border-border/40 transition-colors hover:bg-slate-50 ${selectedExpense?.id === expense.id ? "bg-slate-50/80" : ""
+                        }`}
+                    >
+                      <td className="px-4 py-3 font-medium text-finance">{expense.id}</td>
+                      <td className="px-4 py-3">{formatDate(expense.date, locale)}</td>
+                      <td className="px-4 py-3">{tExpenses(`departments.${expense.department}`)}</td>
+                      <td className="px-4 py-3">{expense.costCenterName}</td>
+                      <td className="px-4 py-3">{expense.employee}</td>
+                      <td className="px-4 py-3 text-end">
+                        {formatCurrency(expense.amount, locale, expense.currency)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${expense.status === "approved"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : expense.status === "rejected"
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-amber-100 text-amber-700"
+                            }`}
+                        >
+                          {tExpenses(`status.${expense.status}`)}
+                        </span>
+                      </td>
+                    </tr>
                   ))}
-                </select>
-              </label>
+                  {!filteredExpenses.length ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                        {tExpenses("empty.rows")}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
-
-            <div className="grid gap-2 md:grid-cols-2">
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.costCenter")}
-                <select
-                  value={form.watch("costCenterId")}
-                  onChange={(event) =>
-                    form.setValue("costCenterId", event.target.value, {
-                      shouldValidate: true,
-                    })
-                  }
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                >
-                  {departmentCenters.map((center) => (
-                    <option key={center.id} value={center.id}>
-                      {center.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.category")}
-                <select
-                  {...form.register("category")}
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                >
-                  {dataset.categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <label className="block text-xs text-muted-foreground">
-              {tExpenses("entry.description")}
-              <input
-                type="text"
-                {...form.register("description")}
-                className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-              />
-            </label>
-
-            <div className="grid gap-2 md:grid-cols-2">
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.vendor")}
-                <input
-                  type="text"
-                  {...form.register("vendor")}
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                />
-              </label>
-
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.employee")}
-                <input
-                  type="text"
-                  {...form.register("employee")}
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                />
-              </label>
-            </div>
-
-            <div className="grid gap-2 md:grid-cols-2">
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.amount")}
-                <input
-                  type="number"
-                  step="0.01"
-                  {...form.register("amount", { valueAsNumber: true })}
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                />
-              </label>
-
-              <label className="text-xs text-muted-foreground">
-                {tExpenses("entry.paymentMethod")}
-                <select
-                  {...form.register("paymentMethod")}
-                  className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-                >
-                  {paymentMethodValues.map((paymentMethod) => (
-                    <option key={paymentMethod} value={paymentMethod}>
-                      {tExpenses(`paymentMethods.${paymentMethod}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <Button type="submit" size="sm" className="w-full">
-              {tExpenses("entry.submit")}
-            </Button>
-            </form>
-          </ErpSection>
+          </section>
         }
         secondary={
-          <>
+          <div className="space-y-4">
+            <ExpenseDetailsView
+              selectedExpense={selectedExpense}
+              approveSelected={approveSelected}
+              rejectSelected={rejectSelected}
+              t={tExpenses}
+            />
+
             <ErpSection title={tExpenses("costCenters.title")}>
-            <div className="mt-3 space-y-2">
-              {costCenterStats.map((center) => (
-                <article key={center.id} className="rounded-md border border-border p-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <p className="font-medium text-finance">{center.name}</p>
-                    <p className="text-muted-foreground">{center.utilization}%</p>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className={`h-full rounded-full ${
-                        center.utilization > 100
-                          ? "bg-danger"
+              <div className="mt-3 space-y-3">
+                {costCenterStats.map((center) => (
+                  <article key={center.id} className="rounded-lg border border-border/70 p-3 bg-slate-50/50 shadow-sm transition hover:bg-slate-50">
+                    <div className="flex items-center justify-between text-xs">
+                      <p className="font-semibold text-slate-700">{center.name}</p>
+                      <p className="text-muted-foreground font-medium">{center.utilization}%</p>
+                    </div>
+                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-200/70">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${center.utilization > 100
+                          ? "bg-rose-500"
                           : center.utilization > 80
-                            ? "bg-warning"
-                            : "bg-success"
-                      }`}
-                      style={{ width: `${Math.min(center.utilization, 100)}%` }}
-                    />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>{formatCurrency(center.spent, locale, "SAR")}</span>
-                    <span>{formatCurrency(center.budget, locale, "SAR")}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
+                            ? "bg-amber-400"
+                            : "bg-emerald-500"
+                          }`}
+                        style={{ width: `${Math.min(center.utilization, 100)}%` }}
+                      />
+                    </div>
+                    <div className="mt-2.5 flex items-center justify-between text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+                      <span>{formatCurrency(center.spent, locale, "SAR")}</span>
+                      <span>{formatCurrency(center.budget, locale, "SAR")}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </ErpSection>
-
-            <ErpSection title={tExpenses("routing.title")}>
-            {!selectedExpense ? (
-              <p className="mt-3 text-sm text-muted-foreground">
-                {tExpenses("empty.selection")}
-              </p>
-            ) : (
-              <>
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-finance">{selectedExpense.id}</p>
-                  <span
-                    className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusClass(
-                      selectedExpense.status,
-                    )}`}
-                  >
-                    {tExpenses(`status.${selectedExpense.status}`)}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {selectedExpense.costCenterName} - {selectedExpense.employee}
-                </p>
-
-                <ol className="mt-3 space-y-2">
-                  {selectedExpense.approvalRoute.map((step) => (
-                    <li key={step.id} className="rounded-md border border-border p-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-finance">{step.role}</span>
-                        <span className="text-muted-foreground">
-                          {tExpenses(`routeStatus.${step.status}`)}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{step.actor}</p>
-                      {step.note ? (
-                        <p className="mt-1 text-[11px] text-muted-foreground">{step.note}</p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ol>
-
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={approveSelected}
-                    disabled={
-                      selectedExpense.status === "approved" ||
-                      selectedExpense.status === "rejected"
-                    }
-                  >
-                    {tExpenses("routing.approveStep")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={rejectSelected}
-                    disabled={
-                      selectedExpense.status === "approved" ||
-                      selectedExpense.status === "rejected"
-                    }
-                  >
-                    {tExpenses("routing.reject")}
-                  </Button>
-                </div>
-              </>
-            )}
-            </ErpSection>
-          </>
+          </div>
         }
       />
 
-      <section className="surface-card col-span-12 overflow-hidden">
-        <header className="border-b border-border bg-slate-50 px-4 py-3">
-          <h3 className="text-sm font-semibold text-finance">{tExpenses("table.title")}</h3>
-        </header>
-        <div className="max-h-[420px] overflow-auto">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-white">
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="px-2 py-2 text-start">{tExpenses("table.id")}</th>
-                <th className="px-2 py-2 text-start">{tExpenses("table.date")}</th>
-                <th className="px-2 py-2 text-start">{tExpenses("table.department")}</th>
-                <th className="px-2 py-2 text-start">{tExpenses("table.costCenter")}</th>
-                <th className="px-2 py-2 text-start">{tExpenses("table.employee")}</th>
-                <th className="px-2 py-2 text-end">{tExpenses("table.amount")}</th>
-                <th className="px-2 py-2 text-start">{tExpenses("table.status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredExpenses.map((expense) => (
-                <tr
-                  key={expense.id}
-                  onClick={() => setSelectedExpenseId(expense.id)}
-                  className={`cursor-pointer border-b border-border/70 ${
-                    selectedExpense?.id === expense.id ? "bg-blue-50" : ""
-                  }`}
-                >
-                  <td className="px-2 py-2 font-medium text-finance">{expense.id}</td>
-                  <td className="px-2 py-2">{formatDate(expense.date, locale)}</td>
-                  <td className="px-2 py-2">{tExpenses(`departments.${expense.department}`)}</td>
-                  <td className="px-2 py-2">{expense.costCenterName}</td>
-                  <td className="px-2 py-2">{expense.employee}</td>
-                  <td className="px-2 py-2 text-end">
-                    {formatCurrency(expense.amount, locale, expense.currency)}
-                  </td>
-                  <td className="px-2 py-2">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${statusClass(
-                        expense.status,
-                      )}`}
-                    >
-                      {tExpenses(`status.${expense.status}`)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {!filteredExpenses.length ? (
-                <tr>
-                  <td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">
-                    {tExpenses("empty.rows")}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <SlideOver
+        isOpen={isRequestFormOpen}
+        onClose={() => setIsRequestFormOpen(false)}
+        title={tExpenses("entry.title")}
+        description={locale === "ar" ? "قسيمة إدخال مصروفات جديدة" : "New expense entry voucher"}
+        size="md"
+      >
+        <ExpenseRequestForm
+          dataset={dataset}
+          onSubmit={submitExpense}
+          onCancel={() => setIsRequestFormOpen(false)}
+          t={tExpenses}
+        />
+      </SlideOver>
+
+
     </ErpPageLayout>
   );
 }

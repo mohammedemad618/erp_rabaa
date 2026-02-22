@@ -16,13 +16,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ErpKpiGrid,
-  ErpMainSplit,
   ErpPageHeader,
   ErpPageLayout,
   ErpSection,
 } from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
-import { PermissionButton } from "@/components/ui/permission-button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import {
@@ -33,9 +31,7 @@ import {
 import { transitionSalesOrder } from "@/services/sales-workflow-api";
 import { cn } from "@/utils/cn";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { AccountingImpactPreview } from "./accounting-impact-preview";
-import { ApprovalTimeline } from "./approval-timeline";
-import { SalesWorkflowPanel } from "./sales-workflow-panel";
+import { TransactionDetailsSlideOver } from "./transaction-details-slideover";
 import type { Transaction, TransactionStatus } from "../types";
 import { transactionStatusOrder } from "../types";
 
@@ -98,7 +94,6 @@ export function TransactionWorkbench({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
-  const hotkeyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [transactions, setTransactions] = useState(initialTransactions);
@@ -112,7 +107,7 @@ export function TransactionWorkbench({
     pageSize: 25,
   });
   const [selectedId, setSelectedId] = useState(initialTransactions[0]?.id ?? "");
-  const [hotkeyMessage, setHotkeyMessage] = useState("");
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [pendingTransition, setPendingTransition] = useState<PendingTransition | null>(null);
   const [pinValue, setPinValue] = useState("");
@@ -250,11 +245,13 @@ export function TransactionWorkbench({
     }
   }, [filteredTransactions, selectedId]);
 
+  function handleRowClick(id: string) {
+    setSelectedId(id);
+    setIsDetailsOpen(true);
+  }
+
   useEffect(() => {
     return () => {
-      if (hotkeyTimerRef.current) {
-        clearTimeout(hotkeyTimerRef.current);
-      }
       if (noticeTimerRef.current) {
         clearTimeout(noticeTimerRef.current);
       }
@@ -262,11 +259,7 @@ export function TransactionWorkbench({
   }, []);
 
   function announceHotkey(message: string): void {
-    setHotkeyMessage(message);
-    if (hotkeyTimerRef.current) {
-      clearTimeout(hotkeyTimerRef.current);
-    }
-    hotkeyTimerRef.current = setTimeout(() => setHotkeyMessage(""), 2000);
+    showNotice(message);
   }
 
   function showNotice(message: string): void {
@@ -405,11 +398,11 @@ export function TransactionWorkbench({
       showNotice(
         fromPinFlow
           ? tSales("messages.executedWithPin", {
-              action: tSales(`actions.${transitionId}`),
-            })
+            action: tSales(`actions.${transitionId}`),
+          })
           : tSales("messages.executed", {
-              action: tSales(`actions.${transitionId}`),
-            }),
+            action: tSales(`actions.${transitionId}`),
+          }),
       );
     } catch (error) {
       const fallback = tSales("messages.apiFailed");
@@ -723,334 +716,140 @@ export function TransactionWorkbench({
         </article>
       </ErpKpiGrid>
 
-      <ErpMainSplit
-        asideFirst={locale === "ar"}
-        className="min-[1900px]:grid-cols-[minmax(0,1fr)_340px]"
-        primary={
-          <>
-            <ErpSection className="col-span-12" title={tTx("tableTitle")}>
-              <div
-                ref={listContainerRef}
-                className="h-[520px] overflow-auto rounded-md border border-border"
-              >
-                <table className="w-full table-fixed text-sm" aria-label="Transactions table">
-                  <thead className="sticky top-0 z-10 bg-white">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <tr key={headerGroup.id} className="border-b border-border">
-                        {headerGroup.headers.map((header) => {
-                          const sortState = header.column.getIsSorted();
-                          return (
-                            <th
-                              key={header.id}
-                              style={{ width: header.getSize() }}
-                              className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground"
-                            >
-                              {header.isPlaceholder ? null : (
-                                <button
-                                  type="button"
-                                  onClick={header.column.getToggleSortingHandler()}
-                                  className={cn(
-                                    "inline-flex items-center gap-1",
-                                    header.column.getCanSort()
-                                      ? "cursor-pointer hover:text-foreground"
-                                      : "cursor-default",
-                                  )}
-                                >
-                                  {flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext(),
-                                  )}
-                                  {sortState === "asc"
-                                    ? "^"
-                                    : sortState === "desc"
-                                      ? "v"
-                                      : ""}
-                                </button>
-                              )}
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </thead>
-
-                  <tbody>
-                    {rows.length ? (
-                      rows.map((row) => {
-                        const active = selectedId === row.original.id;
-
-                        return (
-                          <tr
-                            key={row.id}
-                            ref={(node) => {
-                              rowRefs.current[row.original.id] = node;
-                            }}
-                            className={cn(
-                              "cursor-pointer border-b border-border transition hover:bg-slate-50",
-                              active ? "bg-blue-50/70" : "bg-white",
-                            )}
-                            onClick={() => setSelectedId(row.original.id)}
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <td
-                                key={cell.id}
-                                style={{ width: cell.column.getSize() }}
-                                className="truncate px-2 py-2"
-                              >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </td>
-                            ))}
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={columns.length}
-                          className="px-3 py-8 text-center text-sm text-muted-foreground"
+      <>
+        <ErpSection className="col-span-12" title={tTx("tableTitle")}>
+          <div
+            ref={listContainerRef}
+            className="h-[520px] overflow-auto rounded-md border border-border"
+          >
+            <table className="w-full table-fixed text-sm" aria-label="Transactions table">
+              <thead className="sticky top-0 z-10 bg-white">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id} className="border-b border-border">
+                    {headerGroup.headers.map((header) => {
+                      const sortState = header.column.getIsSorted();
+                      return (
+                        <th
+                          key={header.id}
+                          style={{ width: header.getSize() }}
+                          className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground"
                         >
-                          {tCommon("noResults")}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          {header.isPlaceholder ? null : (
+                            <button
+                              type="button"
+                              onClick={header.column.getToggleSortingHandler()}
+                              className={cn(
+                                "inline-flex items-center gap-1",
+                                header.column.getCanSort()
+                                  ? "cursor-pointer hover:text-foreground"
+                                  : "cursor-default",
+                              )}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {sortState === "asc"
+                                ? "^"
+                                : sortState === "desc"
+                                  ? "v"
+                                  : ""}
+                            </button>
+                          )}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </thead>
 
-              <div className="no-print mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <p>
-                  {rows.length} {tTx("pagination.rowsInPage")}, {filteredTransactions.length}{" "}
-                  {tTx("pagination.matchedRecords")}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={!table.getCanPreviousPage()}
-                    onClick={() => table.previousPage()}
-                  >
-                    {tTx("pagination.prev")}
-                  </Button>
-                  <span>
-                    {tTx("pagination.page")} {pagination.pageIndex + 1} / {Math.max(pageCount, 1)}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={!table.getCanNextPage()}
-                    onClick={() => table.nextPage()}
-                  >
-                    {tTx("pagination.next")}
-                  </Button>
-                </div>
-              </div>
-            </ErpSection>
-          </>
-        }
-        secondary={
-          <div className="space-y-4">
-            {selectedTransaction ? (
-              <>
-                <section className="surface-card p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-finance">{tTx("panel.summary")}</h3>
-                    <StatusPill status={selectedTransaction.status} />
-                  </div>
+              <tbody>
+                {rows.length ? (
+                  rows.map((row) => {
+                    const active = selectedId === row.original.id;
 
-                  <p className="mt-2 text-sm font-semibold text-finance">
-                    <bdi className="font-mono">{selectedTransaction.id}</bdi>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    <bdi className="font-mono">
-                      {selectedTransaction.pnr} - {selectedTransaction.ticketNumber}
-                    </bdi>
-                  </p>
-
-                  <dl className="mt-3 grid gap-x-3 gap-y-2 text-xs text-muted-foreground sm:grid-cols-2">
-                    <div>
-                      <dt className="text-[11px]">{tTx("table.customer")}</dt>
-                      <dd className="text-sm text-foreground">
-                        <bdi>{selectedTransaction.customerName}</bdi>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("panel.customerPhone")}</dt>
-                      <dd className="text-sm text-foreground">
-                        <bdi>{selectedTransaction.customerPhone}</bdi>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("table.airline")}</dt>
-                      <dd className="text-sm text-foreground">
-                        <bdi>{selectedTransaction.airline}</bdi>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("panel.branch")}</dt>
-                      <dd className="text-sm text-foreground">
-                        <bdi>{selectedTransaction.branch}</bdi>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("panel.agent")}</dt>
-                      <dd className="text-sm text-foreground">
-                        <bdi>{selectedTransaction.agent}</bdi>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("panel.paymentMethod")}</dt>
-                      <dd className="text-sm text-foreground">
-                        {tTx(`paymentMethods.${selectedTransaction.paymentMethod}`)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("table.total")}</dt>
-                      <dd className="text-sm text-foreground">
-                        {formatCurrency(
-                          selectedTransaction.totalAmount,
-                          locale,
-                          selectedTransaction.currency,
+                    return (
+                      <tr
+                        key={row.id}
+                        ref={(node) => {
+                          rowRefs.current[row.original.id] = node;
+                        }}
+                        className={cn(
+                          "cursor-pointer border-b border-border transition hover:bg-slate-50",
+                          active ? "bg-blue-50/70" : "bg-white",
                         )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("table.createdAt")}</dt>
-                      <dd className="text-sm text-foreground">
-                        {formatDate(selectedTransaction.createdAt, locale)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px]">{tTx("panel.issuedAt")}</dt>
-                      <dd className="text-sm text-foreground">
-                        {formatDate(selectedTransaction.issuedAt, locale)}
-                      </dd>
-                    </div>
-                  </dl>
-                </section>
-
-                <section className="surface-card p-4">
-                  <h3 className="text-sm font-semibold text-finance">{tTx("panel.quickActions")}</h3>
-                  <div className="no-print mt-3 flex flex-wrap gap-2">
-                    <PermissionButton
-                      action="refund"
-                      transaction={selectedTransaction}
-                      label={tTx("actions.refund")}
-                      requiresPinLabel={tTx("actions.requiresPin")}
-                      disabled={isApplyingTransition}
-                      onClick={() => requestTransition("refund_sale")}
-                    />
-                    <PermissionButton
-                      action="void"
-                      transaction={selectedTransaction}
-                      label={tTx("actions.void")}
-                      requiresPinLabel={tTx("actions.requiresPin")}
-                      disabled={isApplyingTransition}
-                      onClick={() => requestTransition("void_sale")}
-                    />
-                  </div>
-                </section>
-
-                <AccountingImpactPreview transaction={selectedTransaction} />
-                <SalesWorkflowPanel
-                  transaction={selectedTransaction}
-                  onExecuteTransition={requestTransition}
-                  isExecuting={isApplyingTransition}
-                />
-                <ApprovalTimeline transaction={selectedTransaction} />
-
-                <section className="surface-card p-4 text-sm">
-                  <h3 className="text-sm font-semibold text-finance">{tTx("panel.auditMeta")}</h3>
-                  <dl className="mt-3 space-y-2 text-muted-foreground">
-                    <div className="flex items-center justify-between">
-                      <dt>{tTx("panel.createdBy")}</dt>
-                      <dd>{selectedTransaction.auditMetadata.createdBy}</dd>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <dt>{tTx("panel.updatedBy")}</dt>
-                      <dd>{selectedTransaction.auditMetadata.updatedBy}</dd>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <dt>{tTx("panel.version")}</dt>
-                      <dd>{selectedTransaction.auditMetadata.version}</dd>
-                    </div>
-                  </dl>
-                </section>
-              </>
-            ) : (
-              <section className="surface-card p-4 text-sm text-muted-foreground">
-                {tTx("empty.noSelection")}
-              </section>
-            )}
-
-            <section className="surface-card no-print p-4">
-              <h3 className="text-sm font-semibold text-finance">{tTx("hotkeys.title")}</h3>
-              <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                <p>{tTx("hotkeys.focusSearch")}</p>
-                <p>{tTx("hotkeys.nextRow")}</p>
-                <p>{tTx("hotkeys.prevRow")}</p>
-                <p>{tTx("hotkeys.nextLowConfidence")}</p>
-                <p>{tTx("hotkeys.acceptField")}</p>
-                <p>{tTx("hotkeys.zoomDocument")}</p>
-              </div>
-              {hotkeyMessage ? (
-                <p className="mt-2 rounded-md bg-slate-100 px-2 py-1 text-xs text-finance">
-                  {hotkeyMessage}
-                </p>
-              ) : null}
-            </section>
+                        onClick={() => handleRowClick(row.original.id)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            style={{ width: cell.column.getSize() }}
+                            className="truncate px-2 py-2"
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={columns.length}
+                      className="px-3 py-8 text-center text-sm text-muted-foreground"
+                    >
+                      {tCommon("noResults")}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        }
-      />
 
-      {pendingTransition ? (
-        <div className="no-print fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 px-4">
-          <div className="w-full max-w-sm rounded-lg border border-border bg-white p-4 shadow-xl">
-            <h3 className="text-sm font-semibold text-finance">{tSales("pinTitle")}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">{tSales("pinSubtitle")}</p>
-
-            <label className="mt-3 block text-xs text-muted-foreground">
-              {tSales("pinLabel")}
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={pinValue}
-                onChange={(event) => setPinValue(event.target.value)}
-                className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-              />
-            </label>
-
-            {pinError ? (
-              <p className="mt-2 rounded-md bg-rose-50 px-2 py-1 text-xs text-rose-700">
-                {pinError}
-              </p>
-            ) : null}
-
-            <div className="mt-4 flex items-center justify-end gap-2">
+          <div className="no-print mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              {rows.length} {tTx("pagination.rowsInPage")}, {filteredTransactions.length}{" "}
+              {tTx("pagination.matchedRecords")}
+            </p>
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={isApplyingTransition}
-                onClick={() => {
-                  setPendingTransition(null);
-                  setPinValue("");
-                  setPinError("");
-                }}
+                disabled={!table.getCanPreviousPage()}
+                onClick={() => table.previousPage()}
               >
-                {tSales("cancel")}
+                {tTx("pagination.prev")}
               </Button>
+              <span>
+                {tTx("pagination.page")} {pagination.pageIndex + 1} / {Math.max(pageCount, 1)}
+              </span>
               <Button
                 size="sm"
-                variant="danger"
-                disabled={isApplyingTransition}
-                onClick={() => void confirmPinTransition()}
+                variant="secondary"
+                disabled={!table.getCanNextPage()}
+                onClick={() => table.nextPage()}
               >
-                {tSales("confirm")}
+                {tTx("pagination.next")}
               </Button>
             </div>
           </div>
-        </div>
-      ) : null}
+        </ErpSection>
+      </>
+      <TransactionDetailsSlideOver
+        transaction={selectedTransaction}
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        isApplyingTransition={isApplyingTransition}
+        onRequestTransition={requestTransition}
+        pendingTransitionId={pendingTransition?.transitionId ?? null}
+        onCancelPinFlow={() => {
+          setPendingTransition(null);
+          setPinValue("");
+          setPinError("");
+        }}
+        onConfirmPinFlow={confirmPinTransition}
+        pinError={pinError}
+      />
     </ErpPageLayout>
   );
 }

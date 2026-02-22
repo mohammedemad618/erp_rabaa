@@ -25,56 +25,58 @@ export function BalanceSheetTab({ locale, data }: BalanceSheetTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-3">
-        <article className="rounded-md border border-border bg-slate-50 p-3">
-          <p className="text-xs text-muted-foreground">{tAccounting("balanceSheet.assets")}</p>
-          <p className="mt-1 text-lg font-semibold text-finance">
+      <div className="grid gap-4 md:grid-cols-3">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <p className="text-sm font-medium text-slate-500">{tAccounting("balanceSheet.assets")}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
             {formatCurrency(data.assets, locale, "SAR")}
           </p>
         </article>
-        <article className="rounded-md border border-border bg-slate-50 p-3">
-          <p className="text-xs text-muted-foreground">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <p className="text-sm font-medium text-slate-500">
             {tAccounting("balanceSheet.liabilities")}
           </p>
-          <p className="mt-1 text-lg font-semibold text-finance">
+          <p className="mt-2 text-2xl font-bold text-slate-900">
             {formatCurrency(data.liabilities, locale, "SAR")}
           </p>
         </article>
-        <article className="rounded-md border border-border bg-slate-50 p-3">
-          <p className="text-xs text-muted-foreground">{tAccounting("balanceSheet.equity")}</p>
-          <p className="mt-1 text-lg font-semibold text-finance">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+          <p className="text-sm font-medium text-slate-500">{tAccounting("balanceSheet.equity")}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
             {formatCurrency(data.equity, locale, "SAR")}
           </p>
         </article>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
-        <section className="overflow-auto rounded-md border border-border">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-white">
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="px-2 py-2 text-start">{tAccounting("trialBalance.account")}</th>
-                <th className="px-2 py-2 text-start">{tAccounting("trialBalance.category")}</th>
-                <th className="px-2 py-2 text-end">{tAccounting("balanceSheet.balance")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.rows.map((row) => (
-                <tr key={`${row.account}-${row.category}`} className="border-b border-border/70">
-                  <td className="px-2 py-2">{row.account}</td>
-                  <td className="px-2 py-2">{tAccounting(`categories.${row.category}`)}</td>
-                  <td className="px-2 py-2 text-end font-medium text-finance">
-                    {formatCurrency(row.balance, locale, "SAR")}
-                  </td>
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+        <section className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex-1 overflow-x-auto">
+            <table className="w-full text-sm text-slate-600">
+              <thead className="bg-slate-50/80 text-xs uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-slate-200">
+                  <th className="px-4 py-3 text-start font-semibold">{tAccounting("trialBalance.account")}</th>
+                  <th className="px-4 py-3 text-start font-semibold">{tAccounting("trialBalance.category")}</th>
+                  <th className="px-4 py-3 text-end font-semibold">{tAccounting("balanceSheet.balance")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.rows.map((row) => (
+                  <tr key={`${row.account}-${row.category}`} className="transition-colors hover:bg-slate-50">
+                    <td className="px-4 py-2.5 font-medium text-slate-900">{row.account}</td>
+                    <td className="px-4 py-2.5">{tAccounting(`categories.${row.category}`)}</td>
+                    <td className="px-4 py-2.5 text-end font-mono text-xs font-medium text-finance">
+                      {formatCurrency(row.balance, locale, "SAR")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <section className="rounded-md border border-border p-3">
-          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-finance">
-            <BarChart3 className="h-4 w-4" />
+        <section className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
+            <BarChart3 className="h-5 w-5 text-slate-500" />
             {tAccounting("balanceSheet.structure")}
           </h3>
           <div className="h-[300px]">

@@ -9,7 +9,7 @@ import {
   ErpPageLayout,
   ErpSection,
 } from "@/components/layout/erp-page-layout";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/utils/cn";
 import { formatCurrency } from "@/utils/format";
 import type { AccountingDataset } from "../types";
 import {
@@ -221,18 +221,27 @@ export function AccountingConsole({ dataset }: AccountingConsoleProps) {
       </ErpKpiGrid>
 
       <ErpSection className="col-span-12">
-        <div className="no-print mb-4 flex flex-wrap items-center gap-2">
-          {tabs.map((tab) => (
-            <Button
-              key={tab.key}
-              variant={activeTab === tab.key ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </Button>
-          ))}
-          <span className="ms-auto text-xs text-muted-foreground">
+        <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex w-fit items-center rounded-lg border border-slate-200 bg-slate-100/50 p-1 shadow-sm">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "relative px-4 py-1.5 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    isActive
+                      ? "rounded-md bg-white text-finance shadow-sm border border-slate-200/60"
+                      : "text-muted-foreground hover:text-foreground hover:bg-slate-200/50 rounded-md border border-transparent"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
             {tAccounting("filters.showing")}: {filteredRows.length}
           </span>
         </div>

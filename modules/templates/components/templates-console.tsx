@@ -209,7 +209,10 @@ export function TemplatesConsole({ dataset }: TemplatesConsoleProps) {
 
         <section className="surface-card p-4">
           <header className="template-preview-toolbar no-print mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-finance">{tTemplates("preview.title")}</h3>
+            <h3 className="text-sm font-semibold text-finance">
+              {tTemplates("preview.title")}
+              <span className="ms-2 text-[10px] font-normal text-muted-foreground">{locale === "ar" ? "يتم تحديث المعاينة تلقائياً" : "Preview updates live"}</span>
+            </h3>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"

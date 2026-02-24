@@ -455,7 +455,7 @@
     },
     "customers": {
       "title": "Customer Portfolio",
-      "bookings": "bookings"
+      "bookings": "{count, plural, one {booking} other {bookings}}"
     },
     "segment": {
       "starter": "Starter",
@@ -543,8 +543,8 @@
       "utilization": "Utilization",
       "units": {
         "percent": "%",
-        "days": "day(s)",
-        "hours": "hour(s)"
+        "days": "days",
+        "hours": "hours"
       },
       "riskLevel": {
         "low": "Low",
@@ -853,7 +853,7 @@
       "noLogo": "No logo uploaded",
       "header": "Header Editor",
       "footer": "Footer Editor",
-      "theme": "Theme CSS Variables",
+      "theme": "Brand & Theme",
       "primary": "Primary",
       "accent": "Accent",
       "paper": "Paper",

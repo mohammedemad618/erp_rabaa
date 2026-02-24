@@ -455,7 +455,7 @@
     },
     "customers": {
       "title": "محفظة العملاء",
-      "bookings": "حجوزات"
+      "bookings": "{count, plural, one {حجز} other {حجوزات}}"
     },
     "segment": {
       "starter": "بداية",
@@ -853,7 +853,7 @@
       "noLogo": "لا يوجد شعار مرفوع",
       "header": "محرر الترويسة",
       "footer": "محرر التذييل",
-      "theme": "متغيرات CSS للهوية",
+      "theme": "الهوية والمظهر",
       "primary": "اللون الرئيسي",
       "accent": "اللون المساعد",
       "paper": "لون الورق",

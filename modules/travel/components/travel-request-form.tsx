@@ -108,6 +108,7 @@ export function TravelRequestForm({
                             <input
                                 value={form.employeeName}
                                 onChange={(event) => updateForm("employeeName", event.target.value)}
+                                placeholder={t.form.employeeName}
                                 className={fieldControlClass}
                                 autoComplete="name"
                                 required
@@ -119,6 +120,7 @@ export function TravelRequestForm({
                                 type="email"
                                 value={form.employeeEmail}
                                 onChange={(event) => updateForm("employeeEmail", event.target.value)}
+                                placeholder="name@enterprise.local"
                                 className={fieldControlClass}
                                 autoComplete="email"
                                 required

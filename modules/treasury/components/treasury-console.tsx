@@ -280,7 +280,7 @@ export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tTreasury("kpi.bankVariance")}</p>
-          <p className="mt-2 text-lg font-bold text-finance">
+          <p className={`mt-2 text-lg font-bold ${bankVariance < 0 ? "text-rose-600" : "text-finance"}`}>
             {formatCurrency(bankVariance, locale, "SAR")}
           </p>
         </article>

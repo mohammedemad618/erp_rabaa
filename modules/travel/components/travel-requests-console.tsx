@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Search } from "lucide-react";
 import { useLocale } from "next-intl";
@@ -146,19 +146,19 @@ function toDateTimeLocalInputValue(now: Date): string {
 function buildInitialFormState(): FormState {
   const now = new Date();
   return {
-    employeeName: "New Employee",
-    employeeEmail: "new.employee@enterprise.local",
+    employeeName: "",
+    employeeEmail: "",
     employeeGrade: "staff",
-    department: "Operations",
-    costCenter: "CC-OPS-001",
+    department: "",
+    costCenter: "",
     tripType: "domestic",
-    origin: "Riyadh",
-    destination: "Jeddah",
+    origin: "",
+    destination: "",
     departureDate: toDateInputValue(now, 5),
     returnDate: toDateInputValue(now, 7),
-    purpose: "Client meeting",
+    purpose: "",
     travelClass: "economy",
-    estimatedCost: "1500",
+    estimatedCost: "",
     currency: "SAR",
   };
 }
@@ -1100,9 +1100,9 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
           </section>
 
           <section className="surface-card overflow-hidden">
-            <div className="overflow-x-auto border-b border-border">
+            <div className="max-h-[520px] overflow-auto border-b border-border">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50/80 text-xs font-semibold text-finance">
+                <thead className="sticky top-0 z-10 bg-slate-50/80 text-xs font-semibold text-finance">
                   <tr>
                     <th className="px-4 py-3 text-start">{t.table.id}</th>
                     <th className="px-4 py-3 text-start">{t.table.employee}</th>

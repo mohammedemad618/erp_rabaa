@@ -335,7 +335,7 @@ export function SettingsConsole() {
                     },
                   }));
                 }}
-                className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
+                className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground shadow-sm transition hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-ring"
               />
             </label>
           ))}

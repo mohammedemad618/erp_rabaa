@@ -218,7 +218,7 @@ export function BspConsole({ dataset }: BspConsoleProps) {
         </article>
         <article className="surface-card p-4">
           <p className="text-xs text-muted-foreground">{tBsp("kpi.variance")}</p>
-          <p className="mt-2 text-xl font-bold text-finance">
+          <p className={`mt-2 text-xl font-bold ${variance < 0 ? "text-rose-600" : "text-finance"}`}>
             {formatCurrency(variance, locale, "SAR")}
           </p>
         </article>

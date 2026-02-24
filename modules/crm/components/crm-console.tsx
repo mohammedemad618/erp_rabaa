@@ -183,7 +183,7 @@ export function CrmConsole({ dataset }: CrmConsoleProps) {
                   </p>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
-                      {customer.totalBookings} {tCrm("customers.bookings")}
+                      {customer.totalBookings} {tCrm("customers.bookings", { count: customer.totalBookings })}
                     </span>
                     <span
                       className={`inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${

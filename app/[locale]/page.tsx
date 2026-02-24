@@ -14,6 +14,7 @@ import { transactionService } from "@/services/transaction-service";
 import { formatCurrency } from "@/utils/format";
 import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
+import { DashboardWidgets } from "./dashboard-widgets";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,15 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const openRefunds = transactions.filter(
     (transaction) => transaction.status === "refunded",
   ).length;
+  const approvedCount = transactions.filter(
+    (transaction) => transaction.status === "approved",
+  ).length;
+  const paidCount = transactions.filter(
+    (transaction) => transaction.status === "paid",
+  ).length;
+  const draftCount = transactions.filter(
+    (transaction) => transaction.status === "draft",
+  ).length;
 
   const kpiCards = [
     {
@@ -64,34 +74,66 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         exchangeRates: exchangeRates ?? undefined,
       }),
       accent: "bg-blue-50 border-blue-200",
+      trend: "+12.3%",
+      trendUp: true,
     },
     {
       label: tDashboard("kpi.pendingApprovals"),
       value: pendingApprovals.toString(),
       accent: pendingApprovals > 200 ? "bg-amber-50 border-amber-200" : "bg-white border-border",
+      trend: pendingApprovals > 200 ? "High" : "Normal",
+      trendUp: false,
     },
     {
       label: tDashboard("kpi.openRefunds"),
       value: openRefunds.toString(),
       accent: openRefunds > 200 ? "bg-rose-50 border-rose-200" : "bg-white border-border",
+      trend: "-3.1%",
+      trendUp: true,
     },
     {
       label: tDashboard("kpi.ocrLatency"),
       value: "1.3s",
-      accent: "bg-white border-border",
+      accent: "bg-emerald-50 border-emerald-200",
+      trend: "Optimal",
+      trendUp: true,
     },
   ];
 
-  const recentTransactions = transactions.slice(0, 8);
-
   const statusBreakdown = [
-    { label: "Draft", count: transactions.filter((t) => t.status === "draft").length, color: "bg-slate-200" },
-    { label: "Pending Approval", count: pendingApprovals, color: "bg-amber-400" },
-    { label: "Approved", count: transactions.filter((t) => t.status === "approved").length, color: "bg-emerald-400" },
-    { label: "Paid", count: transactions.filter((t) => t.status === "paid").length, color: "bg-blue-400" },
-    { label: "Refunded", count: openRefunds, color: "bg-rose-400" },
+    { label: "Draft", count: draftCount, color: "#94a3b8" },
+    { label: "Pending", count: pendingApprovals, color: "#f59e0b" },
+    { label: "Approved", count: approvedCount, color: "#10b981" },
+    { label: "Paid", count: paidCount, color: "#3b82f6" },
+    { label: "Refunded", count: openRefunds, color: "#ef4444" },
   ];
-  const statusTotal = statusBreakdown.reduce((s, b) => s + b.count, 0) || 1;
+
+  const airlineRevenue: Record<string, number> = {};
+  for (const tx of transactions.slice(0, 500)) {
+    airlineRevenue[tx.airline] = (airlineRevenue[tx.airline] ?? 0) + tx.totalAmount;
+  }
+  const airlineData = Object.entries(airlineRevenue)
+    .map(([airline, amount]) => ({ airline, amount: Math.round(amount) }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const hourlyBuckets: Record<string, number> = {};
+  for (const tx of transactions.slice(0, 300)) {
+    const h = new Date(tx.createdAt).getHours();
+    const label = `${h.toString().padStart(2, "0")}:00`;
+    hourlyBuckets[label] = (hourlyBuckets[label] ?? 0) + tx.totalAmount;
+  }
+  const trendData = Object.entries(hourlyBuckets)
+    .map(([hour, amount]) => ({ hour, amount: Math.round(amount) }))
+    .sort((a, b) => a.hour.localeCompare(b.hour));
+
+  const recentTransactions = transactions.slice(0, 6).map((tx) => ({
+    id: tx.id,
+    customerName: tx.customerName,
+    airline: tx.airline,
+    totalAmount: tx.totalAmount,
+    currency: tx.currency,
+    status: tx.status,
+  }));
 
   return (
     <ErpPageLayout>
@@ -101,7 +143,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         actions={
           <Link
             href="/transactions"
-            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition hover:opacity-95"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-white shadow-md shadow-primary/20 transition hover:bg-blue-700 hover:shadow-lg"
           >
             {tDashboard("cta")}
           </Link>
@@ -110,54 +152,25 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
       <ErpKpiGrid>
         {kpiCards.map((kpi) => (
-          <article key={kpi.label} className={`rounded-lg border p-4 ${kpi.accent}`}>
-            <p className="text-xs text-muted-foreground">{kpi.label}</p>
-            <p className="mt-2 text-2xl font-bold text-finance">{kpi.value}</p>
+          <article key={kpi.label} className={`rounded-xl border p-5 transition-shadow hover:shadow-md ${kpi.accent}`}>
+            <div className="flex items-start justify-between">
+              <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${kpi.trendUp ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {kpi.trend}
+              </span>
+            </div>
+            <p className="mt-3 text-2xl font-bold tracking-tight text-finance">{kpi.value}</p>
           </article>
         ))}
       </ErpKpiGrid>
 
-      <div className="col-span-12 grid gap-4 xl:grid-cols-2">
-        <section className="surface-card p-5">
-          <h3 className="text-sm font-semibold text-finance">{locale === "ar" ? "توزيع الحالات" : "Status Breakdown"}</h3>
-          <p className="mt-1 text-[11px] text-muted-foreground">{locale === "ar" ? "توزيع حالات المعاملات الحالية" : "Current transaction status distribution"}</p>
-          <div className="mt-4 flex h-3 w-full overflow-hidden rounded-full">
-            {statusBreakdown.map((item) => (
-              <div
-                key={item.label}
-                className={`${item.color} transition-all`}
-                style={{ width: `${(item.count / statusTotal) * 100}%` }}
-                title={`${item.label}: ${item.count}`}
-              />
-            ))}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-            {statusBreakdown.map((item) => (
-              <div key={item.label} className="flex items-center gap-1.5">
-                <span className={`inline-block h-2.5 w-2.5 rounded-full ${item.color}`} />
-                <span className="text-xs text-muted-foreground">{item.label}</span>
-                <span className="text-xs font-medium text-finance">{item.count}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="surface-card p-5">
-          <h3 className="text-sm font-semibold text-finance">{locale === "ar" ? "أحدث المعاملات" : "Recent Activity"}</h3>
-          <p className="mt-1 text-[11px] text-muted-foreground">{locale === "ar" ? "آخر 8 معاملات في النظام" : "Latest 8 transactions"}</p>
-          <div className="mt-3 divide-y divide-border">
-            {recentTransactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between py-2">
-                <div>
-                  <p className="text-xs font-medium text-finance">{tx.customerName}</p>
-                  <p className="text-[11px] text-muted-foreground">{tx.airline} &middot; {tx.id}</p>
-                </div>
-                <p className="text-xs font-semibold text-finance">{formatCurrency(tx.totalAmount, locale, tx.currency)}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
+      <DashboardWidgets
+        locale={locale}
+        statusBreakdown={statusBreakdown}
+        airlineData={airlineData}
+        trendData={trendData}
+        recentTransactions={recentTransactions}
+      />
     </ErpPageLayout>
   );
 }

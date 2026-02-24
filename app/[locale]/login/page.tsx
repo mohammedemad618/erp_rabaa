@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
+import { Plane, Loader2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const DEMO_ACCOUNTS = [
@@ -22,6 +23,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState<string>(DEMO_ACCOUNTS[0].password);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   const roleLabelByKey: Record<string, string> = {
     admin: tRoles("admin"),
@@ -78,6 +81,8 @@ export default function LoginPage() {
 
       if (!response.ok) {
         setError(tLogin("failed"));
+        setShake(true);
+        setTimeout(() => setShake(false), 600);
         return;
       }
 
@@ -89,72 +94,131 @@ export default function LoginPage() {
       window.location.href = `/${locale}`;
     } catch {
       setError(tLogin("failed"));
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  function selectAccount(account: (typeof DEMO_ACCOUNTS)[number]): void {
+    setEmail(account.email);
+    setPassword(account.password);
+    setError("");
+  }
+
   return (
-    <section className="surface-card p-6">
-      <h2 className="text-2xl font-bold text-finance">{tLogin("title")}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{tLogin("subtitle")}</p>
-
-      <form onSubmit={submit} className="mt-4 space-y-3">
-        <label className="block text-xs text-muted-foreground">
-          {tLogin("email")}
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-            required
-          />
-        </label>
-        <label className="block text-xs text-muted-foreground">
-          {tLogin("password")}
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground"
-            required
-          />
-        </label>
-        {error ? <p className="text-xs text-rose-600">{error}</p> : null}
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {tLogin("submit")}
-        </Button>
-      </form>
-
-      <div className="mt-5 border-t border-border pt-4">
-        <h3 className="text-sm font-semibold text-finance">{tLogin("demoTitle")}</h3>
-        <div className="mt-2 overflow-x-auto">
-          <table className="min-w-full text-xs">
-            <thead className="bg-slate-50 text-muted-foreground">
-              <tr>
-                <th className="px-2 py-2 text-start">{tLogin("email")}</th>
-                <th className="px-2 py-2 text-start">{tLogin("password")}</th>
-                <th className="px-2 py-2 text-start">{tLogin("role")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DEMO_ACCOUNTS.map((account) => (
-                <tr key={account.email} className="border-t border-border">
-                  <td className="px-2 py-2">
-                    <bdi>{account.email}</bdi>
-                  </td>
-                  <td className="px-2 py-2">
-                    <bdi>{account.password}</bdi>
-                  </td>
-                  <td className="px-2 py-2">
-                    <bdi>{roleLabelByKey[account.role] ?? account.role}</bdi>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <section
+      className={`surface-card overflow-hidden ${shake ? "animate-shake" : ""}`}
+      style={{
+        animation: shake ? "shake 0.5s ease-in-out" : undefined,
+      }}
+    >
+      <div className="bg-gradient-to-r from-primary to-blue-700 px-6 py-5 text-white">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
+            <Plane className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">{tLogin("title")}</h2>
+            <p className="mt-0.5 text-xs text-blue-100">{tLogin("subtitle")}</p>
+          </div>
         </div>
       </div>
+
+      <div className="p-6">
+        <form onSubmit={submit} className="space-y-4">
+          <label className="block text-xs font-medium text-finance">
+            {tLogin("email")}
+            <input
+              ref={emailRef}
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-sm text-foreground shadow-sm transition focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10"
+              required
+              autoComplete="email"
+            />
+          </label>
+          <label className="block text-xs font-medium text-finance">
+            {tLogin("password")}
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-sm text-foreground shadow-sm transition focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10"
+              required
+              autoComplete="current-password"
+            />
+          </label>
+
+          {error ? (
+            <div className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-600">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />
+              {error}
+            </div>
+          ) : null}
+
+          <Button type="submit" className="w-full h-11 text-sm" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                {locale === "ar" ? "جاري الدخول..." : "Signing in..."}
+              </>
+            ) : (
+              tLogin("submit")
+            )}
+          </Button>
+        </form>
+
+        <div className="mt-6 border-t border-border pt-5">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {tLogin("demoTitle")}
+          </h3>
+          <div className="mt-3 grid gap-2">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                onClick={() => selectAccount(account)}
+                className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-start transition-all hover:border-primary/40 hover:bg-blue-50/40 hover:shadow-sm ${
+                  email === account.email
+                    ? "border-primary/50 bg-blue-50/60 shadow-sm"
+                    : "border-border bg-white"
+                }`}
+              >
+                <div>
+                  <p className="text-xs font-medium text-finance">
+                    <bdi>{account.email}</bdi>
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    <bdi>{account.password}</bdi>
+                  </p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  account.role === "admin"
+                    ? "bg-blue-100 text-blue-700"
+                    : account.role === "finance_manager"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100 text-slate-600"
+                }`}>
+                  {roleLabelByKey[account.role] ?? account.role}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-8px); }
+          40% { transform: translateX(8px); }
+          60% { transform: translateX(-4px); }
+          80% { transform: translateX(4px); }
+        }
+      `}</style>
     </section>
   );
 }

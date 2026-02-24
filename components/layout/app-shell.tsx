@@ -2,10 +2,14 @@
 
 import {
   BarChart3,
+  Building2,
   Calculator,
+  Car,
   Cog,
   ChevronDown,
+  FileCheck,
   FileText,
+  Globe,
   LayoutDashboard,
   Landmark,
   LogOut,
@@ -39,13 +43,14 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-type NavGroupId = "control" | "finance" | "ocr" | "customer" | "documents";
+type NavGroupId = "control" | "finance" | "services" | "ocr" | "customer" | "documents";
 
 type NavSubgroupId =
   | "overview"
   | "salesFlow"
   | "accountingFlow"
   | "reconciliation"
+  | "travelServices"
   | "ocrOperations"
   | "relations"
   | "intelligence"
@@ -139,6 +144,24 @@ export function AppShell({ children }: AppShellProps) {
       ],
     },
     {
+      id: "services",
+      label: tNavGroups("services"),
+      icon: Globe,
+      subgroups: [
+        {
+          id: "travelServices",
+          label: tNavSubgroups("travelServices"),
+          items: [
+            { href: "/services", label: tNav("servicesHub"), icon: Globe },
+            { href: "/services/hotels", label: tNav("hotels"), icon: Building2 },
+            { href: "/services/cars", label: tNav("carRental"), icon: Car },
+            { href: "/services/visa", label: tNav("visa"), icon: FileCheck },
+            { href: "/services/tours", label: tNav("tours"), icon: Plane },
+          ],
+        },
+      ],
+    },
+    {
       id: "ocr",
       label: tNavGroups("ocr"),
       icon: FileText,
@@ -184,6 +207,7 @@ export function AppShell({ children }: AppShellProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<NavGroupId, boolean>>({
     control: false,
     finance: false,
+    services: false,
     ocr: false,
     customer: false,
     documents: false,

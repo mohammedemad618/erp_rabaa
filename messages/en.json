@@ -16,11 +16,19 @@
     "expenses": "Expenses",
     "reports": "Reports",
     "ocr": "OCR Workspace",
-    "templates": "Templates"
+    "templates": "Templates",
+    "servicesHub": "Services Hub",
+    "hotels": "Hotel Reservations",
+    "carRental": "Car Rental",
+    "visa": "Visa Services",
+    "tours": "Tour Packages",
+    "insurance": "Travel Insurance",
+    "transfers": "Transfers"
   },
   "navGroups": {
     "control": "Control Center",
     "finance": "Finance Operations",
+    "services": "Travel Services",
     "customer": "Customer & Analytics",
     "documents": "Documents & Templates",
     "ocr": "OCR Operations"
@@ -30,6 +38,7 @@
     "salesFlow": "Sales Flow",
     "accountingFlow": "Accounting Flow",
     "reconciliation": "Reconciliation",
+    "travelServices": "Service Categories",
     "relations": "Customer Relations",
     "intelligence": "BI & Insights",
     "automation": "Document Automation",

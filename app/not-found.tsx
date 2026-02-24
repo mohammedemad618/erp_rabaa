@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Plane, ArrowLeft, Home } from "lucide-react";
 
 export default function RootNotFound() {
@@ -23,13 +24,13 @@ export default function RootNotFound() {
       </p>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-        <a
+        <Link
           href="/en"
           className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#2563eb] px-5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700"
         >
           <Home className="h-4 w-4" />
           Dashboard
-        </a>
+        </Link>
         <button
           onClick={() => window.history.back()}
           className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"

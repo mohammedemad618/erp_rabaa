@@ -16,11 +16,19 @@
     "expenses": "المصاريف",
     "reports": "التقارير",
     "ocr": "مساحة OCR",
-    "templates": "القوالب"
+    "templates": "القوالب",
+    "servicesHub": "مركز الخدمات",
+    "hotels": "حجوزات الفنادق",
+    "carRental": "تأجير السيارات",
+    "visa": "خدمات التأشيرات",
+    "tours": "البرامج السياحية",
+    "insurance": "تأمين السفر",
+    "transfers": "التوصيل"
   },
   "navGroups": {
     "control": "مركز التحكم",
     "finance": "العمليات المالية",
+    "services": "خدمات السفر",
     "customer": "العملاء والتحليلات",
     "documents": "المستندات والقوالب",
     "ocr": "عمليات OCR"
@@ -30,6 +38,7 @@
     "salesFlow": "مسار المبيعات",
     "accountingFlow": "المسار المحاسبي",
     "reconciliation": "المطابقة",
+    "travelServices": "فئات الخدمات",
     "relations": "علاقات العملاء",
     "intelligence": "ذكاء الأعمال",
     "automation": "أتمتة المستندات",

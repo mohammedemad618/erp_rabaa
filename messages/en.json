@@ -910,7 +910,8 @@
   },
   "forbidden": {
     "title": "Access Forbidden",
-    "description": "You do not have the required permission to access this page.",
-    "backToDashboard": "Back to Dashboard"
+    "description": "You do not have the required permission to access this page. Please contact your administrator if you believe this is an error.",
+    "backToDashboard": "Back to Dashboard",
+    "goBack": "Go Back"
   }
 }

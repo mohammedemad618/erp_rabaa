@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Car, FileCheck, Shield, Map, Bus, Globe, Search, ArrowLeft, Plus, CheckCircle, XCircle } from "lucide-react";
+import { Building2, Car, FileCheck, Shield, Map, Bus, Globe, Search, ArrowLeft, Plus, CheckCircle, XCircle, Download } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -73,6 +73,26 @@ export function ServiceListPage({ category, bookings }: ServiceListPageProps) {
   const pendingCount = bookings.filter((b) => b.status === "pending" || b.status === "in_progress").length;
   const confirmedCount = bookings.filter((b) => b.status === "confirmed").length;
 
+  function handleExportCSV() {
+    const headers = ["ID", "Customer", "Email", "Phone", "Amount", "Currency", "Status", "Created"];
+    const rows = bookings.map((b) => [
+      b.id, b.customerName, b.customerEmail, b.customerPhone,
+      b.totalAmount.toString(), b.currency, b.status, b.createdAt,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${category}-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setNotice({ message: isAr ? "تم تصدير البيانات بنجاح" : "Data exported successfully", tone: "success" });
+    setTimeout(() => setNotice(null), 3000);
+  }
+
   async function handleCreateBooking(formData: Record<string, string>) {
     try {
       const res = await fetch("/api/services/bookings", {
@@ -141,6 +161,10 @@ export function ServiceListPage({ category, bookings }: ServiceListPageProps) {
                 {isAr ? "جميع الخدمات" : "All Services"}
               </Button>
             </Link>
+            <Button size="sm" variant="secondary" onClick={handleExportCSV}>
+              <Download className="me-1 h-3.5 w-3.5" />
+              {isAr ? "تصدير" : "Export"}
+            </Button>
             <Button size="sm" onClick={() => setIsFormOpen(true)}>
               <Plus className="me-1 h-3.5 w-3.5" />
               {isAr ? "حجز جديد" : "New Booking"}

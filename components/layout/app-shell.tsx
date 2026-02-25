@@ -46,6 +46,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  badge?: number;
 }
 
 interface NavSection {
@@ -86,13 +87,13 @@ export function AppShell({ children }: AppShellProps) {
     {
       title: tSections("services"),
       items: [
-        { href: "/services", label: tNav("servicesHub"), icon: Globe },
-        { href: "/services/hotels", label: tNav("hotels"), icon: Building2 },
-        { href: "/services/cars", label: tNav("carRental"), icon: Car },
-        { href: "/services/visa", label: tNav("visa"), icon: FileCheck },
+        { href: "/services", label: tNav("servicesHub"), icon: Globe, badge: 7 },
+        { href: "/services/hotels", label: tNav("hotels"), icon: Building2, badge: 1 },
+        { href: "/services/cars", label: tNav("carRental"), icon: Car, badge: 1 },
+        { href: "/services/visa", label: tNav("visa"), icon: FileCheck, badge: 3 },
         { href: "/services/insurance", label: tNav("insurance"), icon: Shield },
-        { href: "/services/tours", label: tNav("tours"), icon: Map },
-        { href: "/services/transfers", label: tNav("transfers"), icon: Bus },
+        { href: "/services/tours", label: tNav("tours"), icon: Map, badge: 1 },
+        { href: "/services/transfers", label: tNav("transfers"), icon: Bus, badge: 1 },
       ],
     },
     {
@@ -256,7 +257,7 @@ export function AppShell({ children }: AppShellProps) {
                         href={item.href}
                         title={collapsed ? item.label : undefined}
                         className={cn(
-                          "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all",
+                          "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all relative",
                           collapsed && "justify-center px-0 py-2.5",
                           active
                             ? "bg-primary text-white shadow-sm shadow-primary/25"
@@ -264,7 +265,16 @@ export function AppShell({ children }: AppShellProps) {
                         )}
                       >
                         <Icon className={cn("h-4 w-4 shrink-0", collapsed && "h-[18px] w-[18px]")} />
-                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                        {item.badge && item.badge > 0 ? (
+                          <span className={cn(
+                            "flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[9px] font-bold",
+                            active ? "bg-white/25 text-white" : "bg-amber-100 text-amber-700",
+                            collapsed && "absolute -top-0.5 -end-0.5 h-4 min-w-4 text-[8px]",
+                          )}>
+                            {item.badge}
+                          </span>
+                        ) : null}
                       </Link>
                     );
                   })}
@@ -275,36 +285,40 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         {/* User + Collapse */}
-        <div className="border-t border-border/50 p-2">
+        <div className="border-t border-border/50 p-2 space-y-1.5">
           {!collapsed && sessionUser && (
-            <div className="mb-2 rounded-lg bg-slate-50 px-3 py-2">
+            <div className="rounded-lg bg-slate-50 px-3 py-2">
               <p className="text-xs font-semibold text-finance truncate">{sessionUser.name}</p>
               <p className="text-[10px] text-muted-foreground">{roleLabelMap[sessionUser.role] ?? sessionUser.role}</p>
             </div>
           )}
-          <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}>
-            {!collapsed && (
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-2 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                {tAuth("logout")}
-              </button>
+          {collapsed && sessionUser && (
+            <div className="flex justify-center" title={sessionUser.name}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                {sessionUser.name?.charAt(0) ?? "U"}
+              </div>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className={cn(
+              "flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-white text-xs text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200",
+              collapsed ? "h-8 w-full" : "h-8 px-2",
             )}
-            <button
-              type="button"
-              onClick={() => setIsSidebarCollapsed(!collapsed)}
-              className={cn(
-                "flex items-center justify-center rounded-lg border border-border bg-white text-slate-500 transition hover:bg-slate-50",
-                collapsed ? "h-9 w-9" : "h-8 w-8",
-              )}
-              title={collapsed ? "Expand" : "Collapse"}
-            >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </button>
-          </div>
+            title={collapsed ? tAuth("logout") : undefined}
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            {!collapsed && tAuth("logout")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(!collapsed)}
+            className="flex w-full items-center justify-center rounded-lg border border-border bg-white h-8 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
         </div>
       </aside>
 

@@ -11,6 +11,8 @@ import {
 } from "@/modules/settings/settings-config";
 import { requirePermission } from "@/services/auth/server-guards";
 import { transactionService } from "@/services/transaction-service";
+import { getServiceStats } from "@/modules/services/services-store";
+import { SERVICE_CATEGORIES } from "@/modules/services/types";
 import { formatCurrency } from "@/utils/format";
 import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -135,6 +137,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     status: tx.status,
   }));
 
+  const serviceStats = getServiceStats();
+  const servicesRevenue = SERVICE_CATEGORIES.map((cat) => ({
+    name: locale === "ar" ? cat.labelAr : cat.labelEn,
+    revenue: serviceStats[cat.id]?.revenue ?? 0,
+    count: serviceStats[cat.id]?.count ?? 0,
+    color: cat.color.replace("text-", ""),
+  }));
+
   return (
     <ErpPageLayout>
       <ErpPageHeader
@@ -170,6 +180,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         airlineData={airlineData}
         trendData={trendData}
         recentTransactions={recentTransactions}
+        servicesRevenue={servicesRevenue}
       />
     </ErpPageLayout>
   );

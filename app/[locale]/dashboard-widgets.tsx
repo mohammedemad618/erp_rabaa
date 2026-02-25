@@ -61,12 +61,20 @@ const STATUS_BADGE: Record<string, string> = {
   pending_payment: "bg-orange-100 text-orange-700",
 };
 
+interface ServiceRevenueItem {
+  name: string;
+  revenue: number;
+  count: number;
+  color: string;
+}
+
 interface DashboardWidgetsProps {
   locale: string;
   statusBreakdown: StatusItem[];
   airlineData: AirlineItem[];
   trendData: TrendItem[];
   recentTransactions: RecentTx[];
+  servicesRevenue: ServiceRevenueItem[];
 }
 
 export function DashboardWidgets({
@@ -75,6 +83,7 @@ export function DashboardWidgets({
   airlineData,
   trendData,
   recentTransactions,
+  servicesRevenue,
 }: DashboardWidgetsProps) {
   const isAr = locale === "ar";
 
@@ -123,6 +132,24 @@ export function DashboardWidgets({
           <SalesTrendChart data={trendData} />
         </section>
       </div>
+
+      <section className="surface-card col-span-12 p-5">
+        <h3 className="text-sm font-semibold text-finance">
+          {isAr ? "إيرادات الخدمات السياحية" : "Travel Services Revenue"}
+        </h3>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {isAr ? "توزيع الإيرادات حسب نوع الخدمة" : "Revenue breakdown by service type"}
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {servicesRevenue.map((svc) => (
+            <div key={svc.name} className="rounded-lg border border-border/60 bg-slate-50/50 p-3 transition hover:shadow-sm">
+              <p className="text-[11px] font-medium text-muted-foreground">{svc.name}</p>
+              <p className="mt-1 text-base font-bold text-finance">SAR {svc.revenue.toLocaleString()}</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">{svc.count} {isAr ? "حجز" : "bookings"}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="surface-card col-span-12 p-5">
         <div className="mb-4 flex items-center justify-between">

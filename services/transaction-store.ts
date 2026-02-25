@@ -1,4 +1,5 @@
 import { generateMockTransactions } from "@/modules/transactions/data/mock-transactions";
+import { getServiceTransactions } from "@/modules/services/services-transaction-bridge";
 import type { Transaction } from "@/modules/transactions/types";
 import {
   getSalesTransitionOption,
@@ -45,7 +46,9 @@ let transactionState: Transaction[] | null = null;
 
 function ensureTransactionState(): Transaction[] {
   if (!transactionState) {
-    transactionState = generateMockTransactions(2500);
+    const flightTransactions = generateMockTransactions(2500);
+    const serviceTransactions = getServiceTransactions();
+    transactionState = [...flightTransactions, ...serviceTransactions];
   }
   return transactionState;
 }

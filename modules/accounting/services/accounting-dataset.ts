@@ -26,6 +26,12 @@ const ACCOUNT_CATEGORY: Record<string, AccountCategory> = {
   "POS Receivable": "asset",
   "Bank Clearing": "asset",
   "Ticket Revenue": "revenue",
+  "Hotel Revenue": "revenue",
+  "Car Rental Revenue": "revenue",
+  "Visa Service Revenue": "revenue",
+  "Insurance Commission": "revenue",
+  "Tour Package Revenue": "revenue",
+  "Transfer Revenue": "revenue",
   "Tax Payable": "liability",
   "Cost of Service": "expense",
   "Accrued Payables": "liability",
@@ -52,7 +58,9 @@ function isPostedState(state: JournalEntryState): boolean {
 }
 
 function getAccountCategory(account: string): AccountCategory {
-  return ACCOUNT_CATEGORY[account] ?? "asset";
+  if (ACCOUNT_CATEGORY[account]) return ACCOUNT_CATEGORY[account];
+  if (account.includes("Revenue") || account.includes("Commission")) return "revenue";
+  return "asset";
 }
 
 function directionalNet(
@@ -75,6 +83,11 @@ export function buildAccountingDataset(transactions: Transaction[]): AccountingD
     const settlementAccount =
       SETTLEMENT_ACCOUNT_BY_PAYMENT[transaction.paymentMethod] ?? "Cash";
 
+    const revenueAccountLine = transaction.accountingPreview.find(
+      (line) => line.side === "credit" && line.account !== "Tax Payable",
+    );
+    const revenueAccount = revenueAccountLine?.account ?? "Ticket Revenue";
+
     const lines: Array<{
       account: string;
       debit: number;
@@ -86,7 +99,7 @@ export function buildAccountingDataset(transactions: Transaction[]): AccountingD
         credit: 0,
       },
       {
-        account: "Ticket Revenue",
+        account: revenueAccount,
         debit: 0,
         credit: roundMoney(transaction.salesAmount),
       },

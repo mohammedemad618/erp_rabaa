@@ -36,6 +36,7 @@ import {
 import { requiredPermissionForRoute } from "@/services/auth/page-permissions";
 import { cn } from "@/utils/cn";
 import { LocaleSwitcher } from "./locale-switcher";
+import { CommandPalette } from "./command-palette";
 
 interface AppShellProps {
   children: ReactNode;
@@ -313,6 +314,7 @@ export function AppShell({ children }: AppShellProps) {
         <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-border bg-white/90 px-4 py-2.5 backdrop-blur lg:px-6">
           <Breadcrumb pathname={pathname} sections={sections} />
           <div className="flex items-center gap-2">
+            <CommandPalette />
             <LocaleSwitcher />
             {collapsed && sessionUser && (
               <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600">

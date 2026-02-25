@@ -231,7 +231,13 @@ export function ServicesHub({ bookings, stats }: ServicesHubProps) {
             </tbody>
           </table>
           {filteredBookings.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">{isAr ? "لا توجد نتائج" : "No bookings found"}</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                <Search className="h-5 w-5 text-slate-400" />
+              </div>
+              <p className="text-sm font-medium text-finance">{isAr ? "لا توجد نتائج" : "No bookings found"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{isAr ? "جرب تعديل البحث أو الفلتر" : "Try adjusting your search or filter"}</p>
+            </div>
           )}
         </div>
       </ErpSection>

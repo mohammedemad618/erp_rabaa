@@ -160,6 +160,24 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         }
       />
 
+      <div className="col-span-12 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { href: "/services/hotels", label: locale === "ar" ? "حجز فندق جديد" : "New Hotel Booking", icon: "🏨" },
+          { href: "/services/visa", label: locale === "ar" ? "طلب تأشيرة جديد" : "New Visa Request", icon: "📋" },
+          { href: "/services/tours", label: locale === "ar" ? "برنامج سياحي جديد" : "New Tour Package", icon: "🗺️" },
+          { href: "/travel", label: locale === "ar" ? "طلب سفر جديد" : "New Travel Request", icon: "✈️" },
+        ].map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-3 text-sm font-medium text-finance shadow-sm transition-all hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5"
+          >
+            <span className="text-lg">{action.icon}</span>
+            {action.label}
+          </Link>
+        ))}
+      </div>
+
       <ErpKpiGrid>
         {kpiCards.map((kpi) => (
           <article key={kpi.label} className={`rounded-xl border p-5 transition-shadow hover:shadow-md ${kpi.accent}`}>

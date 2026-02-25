@@ -7,7 +7,8 @@ import {
   Calculator,
   Car,
   Cog,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileCheck,
   FileText,
   Globe,
@@ -21,6 +22,8 @@ import {
   Scale,
   Ticket,
   Users,
+  Shield,
+  Map,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -44,31 +47,9 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-type NavGroupId = "control" | "finance" | "services" | "ocr" | "customer" | "documents";
-
-type NavSubgroupId =
-  | "overview"
-  | "salesFlow"
-  | "accountingFlow"
-  | "reconciliation"
-  | "travelServices"
-  | "ocrOperations"
-  | "relations"
-  | "intelligence"
-  | "automation"
-  | "publishing";
-
-interface NavSubgroup {
-  id: NavSubgroupId;
-  label: string;
+interface NavSection {
+  title: string;
   items: NavItem[];
-}
-
-interface NavGroup {
-  id: NavGroupId;
-  label: string;
-  icon: LucideIcon;
-  subgroups: NavSubgroup[];
 }
 
 interface SessionUser {
@@ -87,134 +68,60 @@ interface SessionPayload {
 export function AppShell({ children }: AppShellProps) {
   const locale = useLocale();
   const tNav = useTranslations("nav");
-  const tNavGroups = useTranslations("navGroups");
-  const tNavSubgroups = useTranslations("navSubgroups");
   const tApp = useTranslations("app");
   const tAuth = useTranslations("auth");
   const tRoles = useTranslations("roles");
+  const tSections = useTranslations("navSections");
   const pathname = usePathname();
   const isLoginRoute = pathname === "/login";
 
-  const navigation: NavGroup[] = [
+  const sections: NavSection[] = [
     {
-      id: "control",
-      label: tNavGroups("control"),
-      icon: LayoutDashboard,
-      subgroups: [
-        {
-          id: "overview",
-          label: tNavSubgroups("overview"),
-          items: [
-            { href: "/", label: tNav("dashboard"), icon: LayoutDashboard },
-            { href: "/settings", label: tNav("settings"), icon: Cog },
-          ],
-        },
+      title: tSections("main"),
+      items: [
+        { href: "/", label: tNav("dashboard"), icon: LayoutDashboard },
       ],
     },
     {
-      id: "finance",
-      label: tNavGroups("finance"),
-      icon: Calculator,
-      subgroups: [
-        {
-          id: "salesFlow",
-          label: tNavSubgroups("salesFlow"),
-          items: [
-            {
-              href: "/travel",
-              label: tNav("travel"),
-              icon: Plane,
-            },
-            { href: "/transactions", label: tNav("transactions"), icon: Ticket },
-            { href: "/expenses", label: tNav("expenses"), icon: ReceiptText },
-          ],
-        },
-        {
-          id: "accountingFlow",
-          label: tNavSubgroups("accountingFlow"),
-          items: [
-            { href: "/accounting", label: tNav("accounting"), icon: Calculator },
-            { href: "/treasury", label: tNav("treasury"), icon: Landmark },
-          ],
-        },
-        {
-          id: "reconciliation",
-          label: tNavSubgroups("reconciliation"),
-          items: [{ href: "/bsp", label: tNav("bsp"), icon: Scale }],
-        },
+      title: tSections("services"),
+      items: [
+        { href: "/services", label: tNav("servicesHub"), icon: Globe },
+        { href: "/services/hotels", label: tNav("hotels"), icon: Building2 },
+        { href: "/services/cars", label: tNav("carRental"), icon: Car },
+        { href: "/services/visa", label: tNav("visa"), icon: FileCheck },
+        { href: "/services/insurance", label: tNav("insurance"), icon: Shield },
+        { href: "/services/tours", label: tNav("tours"), icon: Map },
+        { href: "/services/transfers", label: tNav("transfers"), icon: Bus },
       ],
     },
     {
-      id: "services",
-      label: tNavGroups("services"),
-      icon: Globe,
-      subgroups: [
-        {
-          id: "travelServices",
-          label: tNavSubgroups("travelServices"),
-          items: [
-            { href: "/services", label: tNav("servicesHub"), icon: Globe },
-            { href: "/services/hotels", label: tNav("hotels"), icon: Building2 },
-            { href: "/services/cars", label: tNav("carRental"), icon: Car },
-            { href: "/services/visa", label: tNav("visa"), icon: FileCheck },
-            { href: "/services/insurance", label: tNav("insurance"), icon: FileText },
-            { href: "/services/tours", label: tNav("tours"), icon: Plane },
-            { href: "/services/transfers", label: tNav("transfers"), icon: Bus },
-          ],
-        },
+      title: tSections("operations"),
+      items: [
+        { href: "/travel", label: tNav("travel"), icon: Plane },
+        { href: "/transactions", label: tNav("transactions"), icon: Ticket },
+        { href: "/expenses", label: tNav("expenses"), icon: ReceiptText },
       ],
     },
     {
-      id: "ocr",
-      label: tNavGroups("ocr"),
-      icon: FileText,
-      subgroups: [
-        {
-          id: "ocrOperations",
-          label: tNavSubgroups("ocrOperations"),
-          items: [{ href: "/ocr", label: tNav("ocr"), icon: FileText }],
-        },
+      title: tSections("finance"),
+      items: [
+        { href: "/accounting", label: tNav("accounting"), icon: Calculator },
+        { href: "/treasury", label: tNav("treasury"), icon: Landmark },
+        { href: "/bsp", label: tNav("bsp"), icon: Scale },
       ],
     },
     {
-      id: "customer",
-      label: tNavGroups("customer"),
-      icon: Users,
-      subgroups: [
-        {
-          id: "relations",
-          label: tNavSubgroups("relations"),
-          items: [{ href: "/crm", label: tNav("crm"), icon: Users }],
-        },
-        {
-          id: "intelligence",
-          label: tNavSubgroups("intelligence"),
-          items: [{ href: "/reports", label: tNav("reports"), icon: BarChart3 }],
-        },
-      ],
-    },
-    {
-      id: "documents",
-      label: tNavGroups("documents"),
-      icon: Printer,
-      subgroups: [
-        {
-          id: "publishing",
-          label: tNavSubgroups("publishing"),
-          items: [{ href: "/templates", label: tNav("templates"), icon: Printer }],
-        },
+      title: tSections("tools"),
+      items: [
+        { href: "/crm", label: tNav("crm"), icon: Users },
+        { href: "/reports", label: tNav("reports"), icon: BarChart3 },
+        { href: "/ocr", label: tNav("ocr"), icon: FileText },
+        { href: "/templates", label: tNav("templates"), icon: Printer },
+        { href: "/settings", label: tNav("settings"), icon: Cog },
       ],
     },
   ];
 
-  const [expandedGroups, setExpandedGroups] = useState<Record<NavGroupId, boolean>>({
-    control: false,
-    finance: false,
-    services: false,
-    ocr: false,
-    customer: false,
-    documents: false,
-  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [contentVersion, setContentVersion] = useState(0);
   const [authLoading, setAuthLoading] = useState(true);
@@ -222,29 +129,18 @@ export function AppShell({ children }: AppShellProps) {
   const [sessionPermissions, setSessionPermissions] = useState<string[]>([]);
 
   useEffect(() => {
-    const refreshContent = () => {
-      setContentVersion((previous) => previous + 1);
-    };
-
-    const handleStorageChanged = (event: StorageEvent) => {
-      if (event.key && event.key !== SETTINGS_STORAGE_KEY) {
-        return;
-      }
-      refreshContent();
-    };
-
-    window.addEventListener(SETTINGS_CHANGED_EVENT, refreshContent);
-    window.addEventListener("storage", handleStorageChanged);
-
-    return () => {
-      window.removeEventListener(SETTINGS_CHANGED_EVENT, refreshContent);
-      window.removeEventListener("storage", handleStorageChanged);
-    };
+    function onSettingsChange() {
+      setContentVersion((v) => v + 1);
+    }
+    window.addEventListener(SETTINGS_CHANGED_EVENT, onSettingsChange);
+    window.addEventListener("storage", (ev) => {
+      if (ev.key === SETTINGS_STORAGE_KEY) onSettingsChange();
+    });
+    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, onSettingsChange);
   }, []);
 
   useEffect(() => {
     let active = true;
-
     async function loadSession(): Promise<void> {
       try {
         const response = await fetch("/api/auth/session", {
@@ -252,68 +148,43 @@ export function AppShell({ children }: AppShellProps) {
           cache: "no-store",
         });
         const payload = (await response.json()) as SessionPayload;
-        if (!active) {
-          return;
-        }
-
+        if (!active) return;
         if (payload.authenticated && payload.user) {
           setSessionUser(payload.user);
-          setSessionPermissions(Array.isArray(payload.permissions) ? payload.permissions : []);
+          setSessionPermissions(
+            Array.isArray(payload.permissions) ? payload.permissions : [],
+          );
         } else {
           setSessionUser(null);
           setSessionPermissions([]);
         }
       } catch {
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setSessionUser(null);
         setSessionPermissions([]);
       } finally {
-        if (active) {
-          setAuthLoading(false);
-        }
+        if (active) setAuthLoading(false);
       }
     }
-
     setAuthLoading(true);
     void loadSession();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [pathname]);
 
   function isRouteActive(href: string): boolean {
-    return href === "/" ? pathname === "/" : pathname.startsWith(href);
-  }
-
-  function toggleGroup(groupId: NavGroupId): void {
-    setExpandedGroups((previous) => ({
-      ...previous,
-      [groupId]: !previous[groupId],
-    }));
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(href + "/");
   }
 
   function canAccessRoute(href: string): boolean {
-    if (!sessionUser) {
-      return false;
-    }
+    if (!sessionUser) return false;
     const requiredPermission = requiredPermissionForRoute(href);
-    if (!requiredPermission) {
-      return false;
-    }
+    if (!requiredPermission) return false;
     return sessionPermissions.includes(requiredPermission);
   }
 
   async function logout(): Promise<void> {
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-    } catch {
-      // no-op
-    }
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* no-op */ }
     window.location.href = `/${locale}/login`;
   }
 
@@ -343,141 +214,111 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
+  const collapsed = isSidebarCollapsed;
+
   return (
-    <div
-      className={cn(
-        "grid min-h-screen transition-all duration-300",
-        isSidebarCollapsed ? "lg:grid-cols-[80px_1fr]" : "lg:grid-cols-[260px_1fr]"
-      )}
-    >
-      <aside className="no-print border-e border-border glass-panel flex flex-col justify-between">
-        <div className="flex h-[calc(100vh-4rem)] flex-col p-4">
-          <div className={cn("mb-6 flex items-center", isSidebarCollapsed ? "justify-center" : "justify-between")}>
-            {!isSidebarCollapsed && (
-              <div>
-                <p className="text-sm font-semibold tracking-wide text-primary">{tApp("name")}</p>
-                <h1 className="mt-1 text-lg font-bold text-finance">{tApp("product")}</h1>
-                <p className="mt-1 text-xs text-muted-foreground">{tApp("subtitle")}</p>
-              </div>
-            )}
-          </div>
-
-          <nav className="space-y-2 overflow-y-auto pe-1">
-            {navigation.map((group) => {
-              const visibleSubgroups = group.subgroups
-                .map((subgroup) => ({
-                  ...subgroup,
-                  items: subgroup.items.filter((item) => canAccessRoute(item.href)),
-                }))
-                .filter((subgroup) => subgroup.items.length > 0);
-
-              if (!visibleSubgroups.length) {
-                return null;
-              }
-
-              const GroupIcon = group.icon;
-              const hasActiveItem = visibleSubgroups.some((subgroup) =>
-                subgroup.items.some((item) => isRouteActive(item.href)),
-              );
-              const isExpanded = hasActiveItem || expandedGroups[group.id];
-
-              return (
-                <section key={group.id} className="rounded-md border border-slate-200/50 bg-white/40 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isSidebarCollapsed) setIsSidebarCollapsed(false);
-                      toggleGroup(group.id);
-                    }}
-                    className={cn(
-                      "flex w-full items-center rounded-md px-2.5 py-2 text-xs font-semibold transition",
-                      hasActiveItem
-                        ? "text-primary bg-primary/5"
-                        : "text-muted-foreground hover:bg-slate-100 hover:text-foreground",
-                      isSidebarCollapsed ? "justify-center" : "justify-between"
-                    )}
-                    title={isSidebarCollapsed ? group.label : undefined}
-                  >
-                    <span className="flex items-center gap-2">
-                      <GroupIcon className={cn("h-4 w-4", isSidebarCollapsed && "h-5 w-5")} />
-                      {!isSidebarCollapsed && group.label}
-                    </span>
-                    {!isSidebarCollapsed && (
-                      <ChevronDown
-                        className={cn("h-3.5 w-3.5 transition", isExpanded ? "rotate-180" : "")}
-                      />
-                    )}
-                  </button>
-
-                  {isExpanded && !isSidebarCollapsed ? (
-                    <div className="mb-1 space-y-2 border-s border-border/70 pb-2 ps-2 pe-1">
-                      {visibleSubgroups.map((subgroup) => (
-                        <div key={`${group.id}-${subgroup.id}`} className="space-y-1">
-                          <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                            {subgroup.label}
-                          </p>
-                          {subgroup.items.map((item) => {
-                            const ItemIcon = item.icon;
-                            const isActive = isRouteActive(item.href);
-
-                            return (
-                              <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition",
-                                  isActive
-                                    ? "bg-primary text-primary-foreground"
-                                    : "text-muted-foreground hover:bg-slate-100 hover:text-foreground",
-                                )}
-                              >
-                                <ItemIcon className="h-4 w-4" />
-                                {item.label}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </section>
-              );
-            })}
-          </nav>
+    <div className={cn("grid min-h-screen transition-all duration-300", collapsed ? "lg:grid-cols-[64px_1fr]" : "lg:grid-cols-[240px_1fr]")}>
+      {/* Sidebar */}
+      <aside className="no-print flex flex-col border-e border-border bg-white">
+        {/* Brand */}
+        <div className={cn("flex items-center border-b border-border/50 px-3 py-4", collapsed && "justify-center px-2")}>
+          {collapsed ? (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white text-sm font-bold">R</div>
+          ) : (
+            <div>
+              <p className="text-sm font-bold text-primary">{tApp("name")}</p>
+              <p className="text-[10px] text-muted-foreground">{tApp("product")}</p>
+            </div>
+          )}
         </div>
 
-        <div className="p-4 border-t border-border/50">
-          <button
-            type="button"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="flex w-full items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-slate-100 hover:text-foreground transition"
-            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            <ChevronDown className={cn("h-5 w-5 transition-transform", isSidebarCollapsed ? "-rotate-90" : "rotate-90")} />
-          </button>
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-thin">
+          {sections.map((section) => {
+            const visibleItems = section.items.filter((item) => canAccessRoute(item.href));
+            if (!visibleItems.length) return null;
+
+            return (
+              <div key={section.title} className="mb-3">
+                {!collapsed && (
+                  <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                    {section.title}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isRouteActive(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        title={collapsed ? item.label : undefined}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all",
+                          collapsed && "justify-center px-0 py-2.5",
+                          active
+                            ? "bg-primary text-white shadow-sm shadow-primary/25"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                        )}
+                      >
+                        <Icon className={cn("h-4 w-4 shrink-0", collapsed && "h-[18px] w-[18px]")} />
+                        {!collapsed && <span className="truncate">{item.label}</span>}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* User + Collapse */}
+        <div className="border-t border-border/50 p-2">
+          {!collapsed && sessionUser && (
+            <div className="mb-2 rounded-lg bg-slate-50 px-3 py-2">
+              <p className="text-xs font-semibold text-finance truncate">{sessionUser.name}</p>
+              <p className="text-[10px] text-muted-foreground">{roleLabelMap[sessionUser.role] ?? sessionUser.role}</p>
+            </div>
+          )}
+          <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}>
+            {!collapsed && (
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-2 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                {tAuth("logout")}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(!collapsed)}
+              className={cn(
+                "flex items-center justify-center rounded-lg border border-border bg-white text-slate-500 transition hover:bg-slate-50",
+                collapsed ? "h-9 w-9" : "h-8 w-8",
+              )}
+              title={collapsed ? "Expand" : "Collapse"}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
       </aside>
 
+      {/* Main content area */}
       <div className="flex min-h-screen flex-col bg-slate-50/30">
-        <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-border glass-panel px-4 py-3 lg:px-6">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full bg-slate-100 px-2 py-1">
-              {sessionUser?.name ?? "-"}
-            </span>
-            <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">
-              {roleLabelMap[sessionUser?.role ?? ""] ?? sessionUser?.role ?? "-"}
-            </span>
-          </div>
+        {/* Top bar */}
+        <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-border bg-white/90 px-4 py-2.5 backdrop-blur lg:px-6">
+          <Breadcrumb pathname={pathname} sections={sections} />
           <div className="flex items-center gap-2">
             <LocaleSwitcher />
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1.5 text-xs text-foreground hover:bg-slate-100"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              {tAuth("logout")}
-            </button>
+            {collapsed && sessionUser && (
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600">
+                {sessionUser.name?.split(" ")[0]}
+              </span>
+            )}
           </div>
         </header>
 
@@ -489,3 +330,21 @@ export function AppShell({ children }: AppShellProps) {
   );
 }
 
+function Breadcrumb({ pathname, sections }: { pathname: string; sections: NavSection[] }) {
+  const allItems = sections.flatMap((s) => s.items.map((i) => ({ ...i, section: s.title })));
+  const current = allItems.find((i) => i.href === "/" ? pathname === "/" : pathname.startsWith(i.href));
+
+  if (!current) return <div className="text-xs text-muted-foreground">&nbsp;</div>;
+
+  const Icon = current.icon;
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span className="text-slate-400">{current.section}</span>
+      <span className="text-slate-300">/</span>
+      <span className="flex items-center gap-1 font-medium text-finance">
+        <Icon className="h-3.5 w-3.5" />
+        {current.label}
+      </span>
+    </div>
+  );
+}

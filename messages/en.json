@@ -45,6 +45,13 @@
     "publishing": "Print & Branding",
     "ocrOperations": "OCR Center"
   },
+  "navSections": {
+    "main": "Main",
+    "services": "Travel Services",
+    "operations": "Operations",
+    "finance": "Finance",
+    "tools": "Tools & Reports"
+  },
   "common": {
     "search": "Search",
     "status": "Status",

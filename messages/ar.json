@@ -45,6 +45,13 @@
     "publishing": "الطباعة والهوية",
     "ocrOperations": "مركز OCR"
   },
+  "navSections": {
+    "main": "الرئيسية",
+    "services": "خدمات السفر",
+    "operations": "العمليات",
+    "finance": "المالية",
+    "tools": "الأدوات والتقارير"
+  },
   "common": {
     "search": "بحث",
     "status": "الحالة",

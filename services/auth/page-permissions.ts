@@ -13,6 +13,13 @@ export const PAGE_PERMISSION_BY_ROUTE: Record<string, AuthPermission> = {
   "/reports": "reports.view",
   "/ocr": "ocr.view",
   "/templates": "templates.view",
+  "/services": "dashboard.view",
+  "/services/hotels": "dashboard.view",
+  "/services/cars": "dashboard.view",
+  "/services/visa": "dashboard.view",
+  "/services/insurance": "dashboard.view",
+  "/services/tours": "dashboard.view",
+  "/services/transfers": "dashboard.view",
 };
 
 export function requiredPermissionForRoute(route: string): AuthPermission | null {

@@ -1,9 +1,13 @@
 "use client";
 
-import { Building2, Car, FileCheck, Shield, Map, Bus, Globe, Search, ArrowLeft, Plus } from "lucide-react";
+import { Building2, Car, FileCheck, Shield, Map, Bus, Globe, Search, ArrowLeft, Plus, CheckCircle, XCircle } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import { SlideOver } from "@/components/ui/slide-over";
+import { BookingForm } from "./booking-form";
+import { BookingVoucher } from "./booking-voucher";
 import {
   ErpKpiGrid,
   ErpPageHeader,
@@ -48,9 +52,12 @@ export function ServiceListPage({ category, bookings }: ServiceListPageProps) {
   const isAr = locale === "ar";
   const catInfo = SERVICE_CATEGORIES.find((c) => c.id === category)!;
   const IconComp = ICONS[catInfo.icon] ?? Globe;
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<string>(bookings[0]?.id ?? "");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [notice, setNotice] = useState<{ message: string; tone: "success" | "error" } | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -66,8 +73,63 @@ export function ServiceListPage({ category, bookings }: ServiceListPageProps) {
   const pendingCount = bookings.filter((b) => b.status === "pending" || b.status === "in_progress").length;
   const confirmedCount = bookings.filter((b) => b.status === "confirmed").length;
 
+  async function handleCreateBooking(formData: Record<string, string>) {
+    try {
+      const res = await fetch("/api/services/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, category, totalAmount: Number(formData.totalAmount) || 0 }),
+      });
+      if (!res.ok) throw new Error("Failed to create booking");
+      setIsFormOpen(false);
+      setNotice({ message: isAr ? "تم إنشاء الحجز بنجاح" : "Booking created successfully", tone: "success" });
+      setTimeout(() => setNotice(null), 3000);
+      router.refresh();
+    } catch {
+      setNotice({ message: isAr ? "فشل إنشاء الحجز" : "Failed to create booking", tone: "error" });
+      setTimeout(() => setNotice(null), 3000);
+    }
+  }
+
+  async function handleStatusChange(id: string, newStatus: BookingStatus) {
+    try {
+      const res = await fetch(`/api/services/bookings/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNotice({ message: isAr ? "تم تحديث الحالة" : "Status updated", tone: "success" });
+      setTimeout(() => setNotice(null), 3000);
+      router.refresh();
+    } catch {
+      setNotice({ message: isAr ? "فشل تحديث الحالة" : "Status update failed", tone: "error" });
+      setTimeout(() => setNotice(null), 3000);
+    }
+  }
+
   return (
     <ErpPageLayout>
+      <SlideOver
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        title={isAr ? "حجز جديد" : "New Booking"}
+        description={isAr ? catInfo.descriptionAr : catInfo.descriptionEn}
+      >
+        <BookingForm
+          category={category}
+          isAr={isAr}
+          onSubmit={handleCreateBooking}
+          onCancel={() => setIsFormOpen(false)}
+        />
+      </SlideOver>
+
+      {notice && (
+        <div className={`col-span-12 rounded-lg px-4 py-2.5 text-xs font-medium ${notice.tone === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+          {notice.message}
+        </div>
+      )}
+
       <ErpPageHeader
         title={isAr ? catInfo.labelAr : catInfo.labelEn}
         description={isAr ? catInfo.descriptionAr : catInfo.descriptionEn}
@@ -79,7 +141,7 @@ export function ServiceListPage({ category, bookings }: ServiceListPageProps) {
                 {isAr ? "جميع الخدمات" : "All Services"}
               </Button>
             </Link>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setIsFormOpen(true)}>
               <Plus className="me-1 h-3.5 w-3.5" />
               {isAr ? "حجز جديد" : "New Booking"}
             </Button>
@@ -191,13 +253,28 @@ export function ServiceListPage({ category, bookings }: ServiceListPageProps) {
               <div className="space-y-2 text-xs">
                 {renderDetailFields(selected, isAr, locale)}
               </div>
-              <div className="mt-4 flex gap-2">
-                <Button size="sm" variant="secondary" className="flex-1">
-                  {isAr ? "تعديل" : "Edit"}
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  {isAr ? "طباعة" : "Print"}
-                </Button>
+              <div className="mt-4 space-y-2">
+                <BookingVoucher booking={selected} locale={locale} />
+                <div className="flex flex-wrap gap-2">
+                  {selected.status === "pending" && (
+                    <Button size="sm" className="flex-1" onClick={() => void handleStatusChange(selected.id, "confirmed")}>
+                      <CheckCircle className="me-1 h-3.5 w-3.5" />
+                      {isAr ? "تأكيد" : "Confirm"}
+                    </Button>
+                  )}
+                  {(selected.status === "confirmed" || selected.status === "in_progress") && (
+                    <Button size="sm" className="flex-1" onClick={() => void handleStatusChange(selected.id, "completed")}>
+                      <CheckCircle className="me-1 h-3.5 w-3.5" />
+                      {isAr ? "إكمال" : "Complete"}
+                    </Button>
+                  )}
+                  {selected.status !== "cancelled" && selected.status !== "completed" && selected.status !== "refunded" && (
+                    <Button size="sm" variant="danger" className="flex-1" onClick={() => void handleStatusChange(selected.id, "cancelled")}>
+                      <XCircle className="me-1 h-3.5 w-3.5" />
+                      {isAr ? "إلغاء" : "Cancel"}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ) : (

@@ -3,6 +3,7 @@
 import {
   BarChart3,
   Building2,
+  Bus,
   Calculator,
   Car,
   Cog,
@@ -156,7 +157,9 @@ export function AppShell({ children }: AppShellProps) {
             { href: "/services/hotels", label: tNav("hotels"), icon: Building2 },
             { href: "/services/cars", label: tNav("carRental"), icon: Car },
             { href: "/services/visa", label: tNav("visa"), icon: FileCheck },
+            { href: "/services/insurance", label: tNav("insurance"), icon: FileText },
             { href: "/services/tours", label: tNav("tours"), icon: Plane },
+            { href: "/services/transfers", label: tNav("transfers"), icon: Bus },
           ],
         },
       ],

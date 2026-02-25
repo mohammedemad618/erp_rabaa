@@ -110,3 +110,40 @@ export function getBookingsByStatus(): Record<BookingStatus, number> {
   }
   return result as Record<BookingStatus, number>;
 }
+
+const nextIdCounters: Record<string, number> = {
+  HTL: 7, CAR: 5, VIS: 5, INS: 4, TUR: 5, TRF: 5,
+};
+
+const PREFIX_MAP: Record<ServiceCategory, string> = {
+  hotel: "HTL", car_rental: "CAR", visa: "VIS",
+  insurance: "INS", tour: "TUR", transfer: "TRF",
+};
+
+export function addBooking(booking: AnyServiceBooking): AnyServiceBooking {
+  const prefix = PREFIX_MAP[booking.category];
+  const num = nextIdCounters[prefix] ?? 99;
+  nextIdCounters[prefix] = num + 1;
+  const newBooking = {
+    ...booking,
+    id: `${prefix}-${String(num).padStart(3, "0")}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  allBookings.push(newBooking);
+  return newBooking;
+}
+
+export function updateBookingStatus(
+  id: string,
+  newStatus: BookingStatus,
+): AnyServiceBooking | null {
+  const idx = allBookings.findIndex((b) => b.id === id);
+  if (idx < 0) return null;
+  allBookings[idx] = {
+    ...allBookings[idx],
+    status: newStatus,
+    updatedAt: new Date().toISOString(),
+  };
+  return allBookings[idx];
+}

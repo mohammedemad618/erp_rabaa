@@ -68,8 +68,12 @@ CI workflow is included at `.github/workflows/ci.yml` and runs lint/test/build f
 
 Included config:
 
-- `netlify.toml` with build command `npm run build:netlify`
+- `netlify.toml` with build command `npx prisma generate && npm run build`
 - Node runtime pinned to `20`
+- Set environment variables:
+  - `DATABASE_URL`
+  - `AUTH_SESSION_SECRET`
+  - `ALLOW_DEMO_ACCOUNTS=true` (unless you intentionally want to disable demo login)
 
 ### Operations and Pilot
 

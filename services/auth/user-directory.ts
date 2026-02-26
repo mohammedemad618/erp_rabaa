@@ -79,9 +79,10 @@ async function ensureInitialUsers(): Promise<void> {
 
 function areDemoAccountsEnabled(): boolean {
   const override = process.env.ALLOW_DEMO_ACCOUNTS?.trim().toLowerCase();
-  if (override === "true") return true;
   if (override === "false") return false;
-  return process.env.NODE_ENV !== "production";
+  if (override === "true") return true;
+  // This project uses demo authentication by default unless explicitly disabled.
+  return true;
 }
 
 export async function authenticateUser(

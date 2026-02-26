@@ -74,6 +74,7 @@ Included config:
   - `DATABASE_URL`
   - `AUTH_SESSION_SECRET`
   - `ALLOW_DEMO_ACCOUNTS=true` (unless you intentionally want to disable demo login)
+- DB connectivity probe endpoint: `GET /api/health/db` (returns `200` when DB is reachable, `503` otherwise)
 
 ### Operations and Pilot
 

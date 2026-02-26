@@ -98,44 +98,9 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
   const idCounter = useRef(dataset.expenses.length + 1);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
-    try {
-      const raw = window.localStorage.getItem(EXPENSES_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as {
-          expenses?: ExpenseRecord[];
-          selectedExpenseId?: string;
-        };
-        if (Array.isArray(parsed.expenses) && parsed.expenses.length > 0) {
-          return parsed.expenses;
-        }
-      }
-    } catch {
-      // Ignore
-    }
-    return dataset.expenses;
-  });
-
-  const [selectedExpenseId, setSelectedExpenseId] = useState(() => {
-    try {
-      const raw = window.localStorage.getItem(EXPENSES_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as {
-          expenses?: ExpenseRecord[];
-          selectedExpenseId?: string;
-        };
-        if (parsed.selectedExpenseId) {
-          return parsed.selectedExpenseId;
-        }
-        if (Array.isArray(parsed.expenses) && parsed.expenses.length > 0) {
-          return parsed.expenses[0]?.id ?? "";
-        }
-      }
-    } catch {
-      // Ignore
-    }
-    return dataset.expenses[0]?.id ?? "";
-  });
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(dataset.expenses);
+  const [selectedExpenseId, setSelectedExpenseId] = useState(dataset.expenses[0]?.id ?? "");
+  const [storageRestored, setStorageRestored] = useState(false);
   const [search, setSearch] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<Department | "all">("all");
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "all">("all");
@@ -148,6 +113,40 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
 
   useEffect(() => {
     try {
+      const raw = window.localStorage.getItem(EXPENSES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          expenses?: ExpenseRecord[];
+          selectedExpenseId?: string;
+        };
+        const storedExpenses = Array.isArray(parsed.expenses) && parsed.expenses.length > 0
+          ? parsed.expenses
+          : null;
+        const sourceRows = storedExpenses ?? dataset.expenses;
+        const preferredId = typeof parsed.selectedExpenseId === "string"
+          ? parsed.selectedExpenseId
+          : sourceRows[0]?.id ?? "";
+        const normalizedSelectedId = sourceRows.some((row) => row.id === preferredId)
+          ? preferredId
+          : sourceRows[0]?.id ?? "";
+
+        if (storedExpenses) {
+          setExpenses(storedExpenses);
+        }
+        setSelectedExpenseId(normalizedSelectedId);
+      }
+    } catch {
+      // Ignore localStorage read errors.
+    } finally {
+      setStorageRestored(true);
+    }
+  }, [dataset.expenses]);
+
+  useEffect(() => {
+    if (!storageRestored) {
+      return;
+    }
+    try {
       window.localStorage.setItem(
         EXPENSES_STORAGE_KEY,
         JSON.stringify({ expenses, selectedExpenseId }),
@@ -155,7 +154,7 @@ export function ExpensesConsole({ dataset }: ExpensesConsoleProps) {
     } catch {
       return;
     }
-  }, [expenses, selectedExpenseId]);
+  }, [expenses, selectedExpenseId, storageRestored]);
 
   useEffect(() => {
     return () => {

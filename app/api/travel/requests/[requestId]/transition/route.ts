@@ -58,7 +58,7 @@ export async function POST(
     );
   }
 
-  const result = applyTravelRequestTransition({
+  const result = await applyTravelRequestTransition({
     requestId,
     transitionId: body.transitionId,
     actorRole,

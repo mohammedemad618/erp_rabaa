@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     return parsedBody.response;
   }
   const body = parsedBody.data;
-  const result = autoApproveTravelRequests({
+  const result = await autoApproveTravelRequests({
     actorRole: "admin",
     actorName: guard.user.name,
     maxEstimatedCost: body.maxEstimatedCost,

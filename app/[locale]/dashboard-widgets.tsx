@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import dynamic from "next/dynamic";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, type CurrencyFormatOptions } from "@/utils/format";
 
 const StatusPieChart = dynamic(
   () => import("@/components/dashboard/dashboard-charts").then((m) => m.StatusPieChart),
@@ -75,6 +75,7 @@ interface DashboardWidgetsProps {
   trendData: TrendItem[];
   recentTransactions: RecentTx[];
   servicesRevenue: ServiceRevenueItem[];
+  currencyOptions?: CurrencyFormatOptions;
 }
 
 export function DashboardWidgets({
@@ -84,6 +85,7 @@ export function DashboardWidgets({
   trendData,
   recentTransactions,
   servicesRevenue,
+  currencyOptions,
 }: DashboardWidgetsProps) {
   const isAr = locale === "ar";
 
@@ -92,10 +94,10 @@ export function DashboardWidgets({
       <div className="col-span-12 grid gap-4 xl:grid-cols-3">
         <section className="surface-card p-5">
           <h3 className="text-sm font-semibold text-finance">
-            {isAr ? "توزيع الحالات" : "Status Distribution"}
+            {isAr ? "\u062A\u0648\u0632\u064A\u0639 \u0627\u0644\u062D\u0627\u0644\u0627\u062A" : "Status Distribution"}
           </h3>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {isAr ? "حسب حالة المعاملة" : "By transaction status"}
+            {isAr ? "\u062D\u0633\u0628 \u062D\u0627\u0644\u0629 \u0627\u0644\u0645\u0639\u0627\u0645\u0644\u0629" : "By transaction status"}
           </p>
           <StatusPieChart data={statusBreakdown} />
           <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
@@ -114,20 +116,20 @@ export function DashboardWidgets({
 
         <section className="surface-card p-5">
           <h3 className="text-sm font-semibold text-finance">
-            {isAr ? "إيرادات شركات الطيران" : "Airline Revenue"}
+            {isAr ? "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0634\u0631\u0643\u0627\u062A \u0627\u0644\u0637\u064A\u0631\u0627\u0646" : "Airline Revenue"}
           </h3>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {isAr ? "أعلى الشركات حسب الإيرادات" : "Top airlines by revenue"}
+            {isAr ? "\u0623\u0639\u0644\u0649 \u0627\u0644\u0634\u0631\u0643\u0627\u062A \u062D\u0633\u0628 \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A" : "Top airlines by revenue"}
           </p>
           <AirlineBarChart data={airlineData} />
         </section>
 
         <section className="surface-card p-5">
           <h3 className="text-sm font-semibold text-finance">
-            {isAr ? "اتجاه المبيعات" : "Sales Trend"}
+            {isAr ? "\u0627\u062A\u062C\u0627\u0647 \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A" : "Sales Trend"}
           </h3>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {isAr ? "حجم المبيعات كل ساعة" : "Hourly sales volume"}
+            {isAr ? "\u062D\u062C\u0645 \u0627\u0644\u0645\u0628\u064A\u0639\u0627\u062A \u0643\u0644 \u0633\u0627\u0639\u0629" : "Hourly sales volume"}
           </p>
           <SalesTrendChart data={trendData} />
         </section>
@@ -135,17 +137,19 @@ export function DashboardWidgets({
 
       <section className="surface-card col-span-12 p-5">
         <h3 className="text-sm font-semibold text-finance">
-          {isAr ? "إيرادات الخدمات السياحية" : "Travel Services Revenue"}
+          {isAr ? "\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u0627\u0644\u062E\u062F\u0645\u0627\u062A \u0627\u0644\u0633\u064A\u0627\u062D\u064A\u0629" : "Travel Services Revenue"}
         </h3>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {isAr ? "توزيع الإيرادات حسب نوع الخدمة" : "Revenue breakdown by service type"}
+          {isAr ? "\u062A\u0648\u0632\u064A\u0639 \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A \u062D\u0633\u0628 \u0646\u0648\u0639 \u0627\u0644\u062E\u062F\u0645\u0629" : "Revenue breakdown by service type"}
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {servicesRevenue.map((svc) => (
             <div key={svc.name} className="rounded-lg border border-border/60 bg-slate-50/50 p-3 transition hover:shadow-sm">
               <p className="text-[11px] font-medium text-muted-foreground">{svc.name}</p>
-              <p className="mt-1 text-base font-bold text-finance">SAR {svc.revenue.toLocaleString()}</p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">{svc.count} {isAr ? "حجز" : "bookings"}</p>
+              <p className="mt-1 text-base font-bold text-finance">
+                {formatCurrency(svc.revenue, locale, "SAR", currencyOptions)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">{svc.count} {isAr ? "\u062D\u062C\u0632" : "bookings"}</p>
             </div>
           ))}
         </div>
@@ -155,10 +159,10 @@ export function DashboardWidgets({
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-finance">
-              {isAr ? "أحدث المعاملات" : "Recent Transactions"}
+              {isAr ? "\u0623\u062D\u062F\u062B \u0627\u0644\u0645\u0639\u0627\u0645\u0644\u0627\u062A" : "Recent Transactions"}
             </h3>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {isAr ? "آخر المعاملات المسجلة في النظام" : "Latest transactions recorded in the system"}
+              {isAr ? "\u0622\u062E\u0631 \u0627\u0644\u0645\u0639\u0627\u0645\u0644\u0627\u062A \u0627\u0644\u0645\u0633\u062C\u0644\u0629 \u0641\u064A \u0627\u0644\u0646\u0638\u0627\u0645" : "Latest transactions recorded in the system"}
             </p>
           </div>
         </div>
@@ -167,10 +171,10 @@ export function DashboardWidgets({
             <thead className="text-xs text-muted-foreground">
               <tr className="border-b border-border">
                 <th className="px-3 py-2.5 text-start font-medium">ID</th>
-                <th className="px-3 py-2.5 text-start font-medium">{isAr ? "العميل" : "Customer"}</th>
-                <th className="px-3 py-2.5 text-start font-medium">{isAr ? "شركة الطيران" : "Airline"}</th>
-                <th className="px-3 py-2.5 text-end font-medium">{isAr ? "المبلغ" : "Amount"}</th>
-                <th className="px-3 py-2.5 text-start font-medium">{isAr ? "الحالة" : "Status"}</th>
+                <th className="px-3 py-2.5 text-start font-medium">{isAr ? "\u0627\u0644\u0639\u0645\u064A\u0644" : "Customer"}</th>
+                <th className="px-3 py-2.5 text-start font-medium">{isAr ? "\u0634\u0631\u0643\u0629 \u0627\u0644\u0637\u064A\u0631\u0627\u0646" : "Airline"}</th>
+                <th className="px-3 py-2.5 text-end font-medium">{isAr ? "\u0627\u0644\u0645\u0628\u0644\u063A" : "Amount"}</th>
+                <th className="px-3 py-2.5 text-start font-medium">{isAr ? "\u0627\u0644\u062D\u0627\u0644\u0629" : "Status"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -180,7 +184,7 @@ export function DashboardWidgets({
                   <td className="px-3 py-2.5 text-finance">{tx.customerName}</td>
                   <td className="px-3 py-2.5 text-muted-foreground">{tx.airline}</td>
                   <td className="px-3 py-2.5 text-end font-semibold text-finance">
-                    {formatCurrency(tx.totalAmount, locale, tx.currency)}
+                    {formatCurrency(tx.totalAmount, locale, tx.currency, currencyOptions)}
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE[tx.status] ?? "bg-slate-100 text-slate-600"}`}>
@@ -196,3 +200,5 @@ export function DashboardWidgets({
     </>
   );
 }
+
+

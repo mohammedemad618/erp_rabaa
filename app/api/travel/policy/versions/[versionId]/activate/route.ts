@@ -37,7 +37,7 @@ export async function POST(
   }
   const body = parsedBody.data;
 
-  const result = activateTravelPolicyVersion({
+  const result = await activateTravelPolicyVersion({
     versionId,
     actorName: guard.user.name,
     effectiveFrom: body.effectiveFrom,

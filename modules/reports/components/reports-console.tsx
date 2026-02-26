@@ -380,6 +380,8 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
   const travelInsightsValueFallback = isTravelInsightsLoading
     ? tReports("travelIndicators.loading")
     : "-";
+  const travelSlaBreaches = travelInsights?.slaBreaches ?? [];
+  const travelBudgetRisks = travelInsights?.budgetRisks ?? [];
 
   return (
     <ErpPageLayout>
@@ -458,7 +460,7 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
               {tReports("travelIndicators.complianceRate")}
             </p>
             <p className="mt-1 text-lg font-semibold text-finance">
-              {travelInsights
+              {typeof travelInsights?.complianceRate === "number"
                 ? `${travelInsights.complianceRate}${tReports("travelIndicators.units.percent")}`
                 : travelInsightsValueFallback}
             </p>
@@ -468,7 +470,7 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
               {tReports("travelIndicators.blockedRate")}
             </p>
             <p className="mt-1 text-lg font-semibold text-finance">
-              {travelInsights
+              {typeof travelInsights?.blockedPolicyRate === "number"
                 ? `${travelInsights.blockedPolicyRate}${tReports("travelIndicators.units.percent")}`
                 : travelInsightsValueFallback}
             </p>
@@ -478,7 +480,7 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
               {tReports("travelIndicators.avgLeadTime")}
             </p>
             <p className="mt-1 text-lg font-semibold text-finance">
-              {travelInsights
+              {typeof travelInsights?.averageLeadTimeDays === "number"
                 ? `${travelInsights.averageLeadTimeDays} ${tReports("travelIndicators.units.days")}`
                 : travelInsightsValueFallback}
             </p>
@@ -488,7 +490,7 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
               {tReports("travelIndicators.avgApprovalCycle")}
             </p>
             <p className="mt-1 text-lg font-semibold text-finance">
-              {travelInsights
+              {typeof travelInsights?.averageApprovalCycleHours === "number"
                 ? `${travelInsights.averageApprovalCycleHours} ${tReports("travelIndicators.units.hours")}`
                 : travelInsightsValueFallback}
             </p>
@@ -502,12 +504,12 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
                 {tReports("travelIndicators.slaBreaches")}
               </h4>
               <span className="text-[11px] text-muted-foreground">
-                {travelInsights?.slaBreaches.length ?? 0}
+                {travelSlaBreaches.length}
               </span>
             </div>
-            {travelInsights?.slaBreaches.length ? (
+            {travelSlaBreaches.length ? (
               <div className="space-y-2">
-                {travelInsights.slaBreaches.slice(0, 5).map((row) => (
+                {travelSlaBreaches.slice(0, 5).map((row) => (
                   <article
                     key={row.requestId}
                     className="rounded-md border border-border px-2 py-2"
@@ -538,12 +540,12 @@ export function ReportsConsole({ dataset }: ReportsConsoleProps) {
                 {tReports("travelIndicators.budgetRisks")}
               </h4>
               <span className="text-[11px] text-muted-foreground">
-                {travelInsights?.budgetRisks.length ?? 0}
+                {travelBudgetRisks.length}
               </span>
             </div>
-            {travelInsights?.budgetRisks.length ? (
+            {travelBudgetRisks.length ? (
               <div className="space-y-2">
-                {travelInsights.budgetRisks.slice(0, 5).map((row) => (
+                {travelBudgetRisks.slice(0, 5).map((row) => (
                   <article
                     key={row.costCenter}
                     className="rounded-md border border-border px-2 py-2"

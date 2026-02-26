@@ -59,7 +59,7 @@ const TRAVEL_TRANSITIONS: TravelTransitionRule[] = [
     id: "submit_request",
     from: ["draft"],
     to: "submitted",
-    allowedRoles: ["employee", "admin"],
+    allowedRoles: ["employee", "admin", "agent"],
     requiresNote: false,
   },
   {

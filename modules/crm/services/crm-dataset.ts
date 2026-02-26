@@ -1,4 +1,7 @@
 import type { Transaction } from "@/modules/transactions/types";
+import type { Customer } from "@/modules/customers/types";
+import type { AnyServiceBooking } from "@/modules/services/types";
+import type { TravelRequest } from "@/modules/travel/types";
 import type {
   CrmDataset,
   CustomerProfile,
@@ -108,10 +111,38 @@ function toCustomerId(name: string, phone: string): string {
   return `CUST-${hashString(`${name}-${phone}`).toString(16).toUpperCase()}`;
 }
 
-export function buildCrmDataset(transactions: Transaction[]): CrmDataset {
+function normalizeCustomerName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizePhone(value: string): string {
+  return value.replace(/[^\d+]/g, "").trim();
+}
+
+function toCustomerKey(name: string, phone: string): string {
+  return `${normalizeCustomerName(name)}||${normalizePhone(phone)}`;
+}
+
+function uniqueById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    result.push(item);
+  }
+  return result;
+}
+
+export function buildCrmDataset(
+  transactions: Transaction[],
+  serviceBookings: AnyServiceBooking[] = [],
+  travelRequests: TravelRequest[] = [],
+  knownCustomers: Customer[] = [],
+): CrmDataset {
   const byCustomer = new Map<string, Transaction[]>();
   for (const transaction of transactions) {
-    const key = `${transaction.customerName}||${transaction.customerPhone}`;
+    const key = toCustomerKey(transaction.customerName, transaction.customerPhone);
     const existing = byCustomer.get(key);
     if (!existing) {
       byCustomer.set(key, [transaction]);
@@ -120,16 +151,72 @@ export function buildCrmDataset(transactions: Transaction[]): CrmDataset {
     existing.push(transaction);
   }
 
+  const knownCustomerById = new Map<string, Customer>();
+  const knownCustomerByKey = new Map<string, Customer>();
+  for (const customer of knownCustomers) {
+    knownCustomerById.set(customer.id, customer);
+    knownCustomerByKey.set(toCustomerKey(customer.name, customer.phone), customer);
+  }
+
+  const servicesByCustomerName = new Map<string, AnyServiceBooking[]>();
+  const servicesByCustomerId = new Map<string, AnyServiceBooking[]>();
+  for (const booking of serviceBookings) {
+    const key = normalizeCustomerName(booking.customerName);
+    const existing = servicesByCustomerName.get(key);
+    if (!existing) {
+      servicesByCustomerName.set(key, [booking]);
+    } else {
+      existing.push(booking);
+    }
+    if (booking.customerId) {
+      const byId = servicesByCustomerId.get(booking.customerId);
+      if (!byId) {
+        servicesByCustomerId.set(booking.customerId, [booking]);
+      } else {
+        byId.push(booking);
+      }
+    }
+  }
+
+  const travelByEmployeeName = new Map<string, TravelRequest[]>();
+  const travelByCustomerId = new Map<string, TravelRequest[]>();
+  for (const request of travelRequests) {
+    const key = normalizeCustomerName(request.employeeName);
+    const existing = travelByEmployeeName.get(key);
+    if (!existing) {
+      travelByEmployeeName.set(key, [request]);
+    } else {
+      existing.push(request);
+    }
+    if (request.customerId) {
+      const byId = travelByCustomerId.get(request.customerId);
+      if (!byId) {
+        travelByCustomerId.set(request.customerId, [request]);
+      } else {
+        byId.push(request);
+      }
+    }
+  }
+
   const referenceDateMs = transactions.reduce((max, transaction) => {
     return Math.max(max, new Date(transaction.createdAt).getTime());
-  }, 0);
+  }, Date.now());
 
   const customers: CustomerProfile[] = Array.from(byCustomer.entries()).map(
     ([key, customerTransactions]) => {
-      const [name, phone] = key.split("||");
+      const [normalizedName, normalizedPhone] = key.split("||");
+      const matchedKnownCustomer = knownCustomerByKey.get(key);
       const sorted = [...customerTransactions].sort((a, b) =>
         b.createdAt.localeCompare(a.createdAt),
       );
+      const name =
+        matchedKnownCustomer?.name ??
+        sorted[0]?.customerName ??
+        normalizedName;
+      const phone =
+        matchedKnownCustomer?.phone ??
+        sorted[0]?.customerPhone ??
+        normalizedPhone;
 
       const totalSales = roundMoney(
         sorted.reduce((sum, transaction) => sum + transaction.totalAmount, 0),
@@ -157,20 +244,38 @@ export function buildCrmDataset(transactions: Transaction[]): CrmDataset {
           : 0;
       const risk = determineRisk(utilization);
 
+      const customerServices = uniqueById([
+        ...(matchedKnownCustomer?.id
+          ? servicesByCustomerId.get(matchedKnownCustomer.id) ?? []
+          : []),
+        ...(servicesByCustomerName.get(normalizeCustomerName(name)) ?? []),
+      ]);
+      const customerTravel = uniqueById([
+        ...(matchedKnownCustomer?.id
+          ? travelByCustomerId.get(matchedKnownCustomer.id) ?? []
+          : []),
+        ...(travelByEmployeeName.get(normalizeCustomerName(name)) ?? []),
+      ]);
+      const serviceRevenue = customerServices.reduce((sum, b) => sum + b.totalAmount, 0);
+      const travelRevenue = customerTravel.reduce((sum, request) => sum + request.estimatedCost, 0);
+
       return {
-        id: toCustomerId(name, phone),
+        id: matchedKnownCustomer?.id ?? toCustomerId(name, phone),
         name,
         phone,
+        email: matchedKnownCustomer?.email ?? customerServices[0]?.customerEmail,
         preferredAirline: preferredAirline(sorted),
         branches: Array.from(new Set(sorted.map((item) => item.branch))),
-        segment: determineSegment(totalSales),
-        totalBookings: sorted.length,
-        totalSales,
+        segment: matchedKnownCustomer?.segment ?? determineSegment(totalSales + serviceRevenue + travelRevenue),
+        totalBookings: sorted.length + customerServices.length + customerTravel.length,
+        totalSales: roundMoney(totalSales + serviceRevenue + travelRevenue),
         paidAmount,
         outstandingAmount,
         refundedAmount,
-        averageTicket: roundMoney(totalSales / Math.max(sorted.length, 1)),
-        lastBookingAt: sorted[0]?.createdAt ?? new Date(referenceDateMs).toISOString(),
+        averageTicket: roundMoney(
+          (totalSales + serviceRevenue + travelRevenue) / Math.max(sorted.length + customerServices.length + customerTravel.length, 1),
+        ),
+        lastBookingAt: sorted[0]?.createdAt ?? matchedKnownCustomer?.createdAt ?? new Date(referenceDateMs).toISOString(),
         credit: {
           limit: creditLimit,
           exposure: outstandingAmount,
@@ -193,11 +298,73 @@ export function buildCrmDataset(transactions: Transaction[]): CrmDataset {
           paymentMethod: transaction.paymentMethod,
           agent: transaction.agent,
         })),
+        serviceBookings: customerServices,
+        travelRequests: customerTravel,
       };
     },
   );
 
-  const sortedCustomers = customers.sort((a, b) => b.totalSales - a.totalSales);
+  const customerProfileById = new Map<string, CustomerProfile>();
+  for (const profile of customers) {
+    customerProfileById.set(profile.id, profile);
+  }
+  for (const customer of knownCustomers) {
+    const existing = customerProfileById.get(customer.id);
+    if (existing) {
+      if (!existing.email) existing.email = customer.email;
+      existing.segment = customer.segment;
+      continue;
+    }
+
+    const customerServices = uniqueById([
+      ...(servicesByCustomerId.get(customer.id) ?? []),
+      ...(servicesByCustomerName.get(normalizeCustomerName(customer.name)) ?? []),
+    ]);
+    const customerTravel = uniqueById([
+      ...(travelByCustomerId.get(customer.id) ?? []),
+      ...(travelByEmployeeName.get(normalizeCustomerName(customer.name)) ?? []),
+    ]);
+    const serviceRevenue = customerServices.reduce((sum, booking) => sum + booking.totalAmount, 0);
+    const travelRevenue = customerTravel.reduce((sum, request) => sum + request.estimatedCost, 0);
+    const totalRevenue = roundMoney(serviceRevenue + travelRevenue);
+    const totalBookings = customerServices.length + customerTravel.length;
+    const creditLimit = buildCreditLimit(customer.name);
+    const latestActivity = [
+      customer.createdAt,
+      ...customerServices.map((booking) => booking.createdAt),
+      ...customerTravel.map((request) => request.updatedAt),
+    ].sort((a, b) => b.localeCompare(a))[0] ?? customer.createdAt;
+
+    customerProfileById.set(customer.id, {
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
+      preferredAirline: "-",
+      branches: [],
+      segment: customer.segment,
+      totalBookings,
+      totalSales: totalRevenue,
+      paidAmount: 0,
+      outstandingAmount: 0,
+      refundedAmount: 0,
+      averageTicket: totalBookings > 0 ? roundMoney(totalRevenue / totalBookings) : 0,
+      lastBookingAt: latestActivity,
+      credit: {
+        limit: creditLimit,
+        exposure: 0,
+        available: creditLimit,
+        utilization: 0,
+        riskLevel: "low",
+      },
+      aging: buildAging([], referenceDateMs),
+      timeline: [],
+      serviceBookings: customerServices,
+      travelRequests: customerTravel,
+    });
+  }
+
+  const sortedCustomers = Array.from(customerProfileById.values()).sort((a, b) => b.totalSales - a.totalSales);
   const totalOutstanding = roundMoney(
     sortedCustomers.reduce((sum, customer) => sum + customer.outstandingAmount, 0),
   );
@@ -208,6 +375,10 @@ export function buildCrmDataset(transactions: Transaction[]): CrmDataset {
     (customer) => customer.credit.riskLevel === "high",
   ).length;
 
+  const totalServiceRevenue = roundMoney(
+    serviceBookings.reduce((sum, b) => sum + b.totalAmount, 0),
+  );
+
   return {
     customers: sortedCustomers,
     totals: {
@@ -215,6 +386,8 @@ export function buildCrmDataset(transactions: Transaction[]): CrmDataset {
       outstanding: totalOutstanding,
       sales: totalSales,
       highRisk,
+      totalServiceRevenue,
+      totalTravelRequests: travelRequests.length,
     },
   };
 }

@@ -5,12 +5,14 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   ErpKpiGrid,
   ErpPageHeader,
   ErpPageLayout,
   ErpSection,
 } from "@/components/layout/erp-page-layout";
+import { Link } from "@/i18n/navigation";
 import type { ReconciliationMatch, TreasuryDataset } from "../types";
 import { ReconciliationWorkbench } from "./reconciliation-workbench";
 
@@ -35,6 +37,7 @@ interface TreasuryConsoleProps {
 export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
   const tTreasury = useTranslations("treasury");
   const locale = useLocale();
+  const isAr = locale === "ar";
 
   const [search, setSearch] = useState("");
   const [accountFilter, setAccountFilter] = useState<AccountFilter>("all");
@@ -207,6 +210,39 @@ export function TreasuryConsole({ dataset }: TreasuryConsoleProps) {
 
   const displayedCashRows = filteredCashRows.slice(0, 14);
   const displayedPosRows = filteredPosRows.slice(0, 12);
+  const hasTreasuryData =
+    dataset.cashRows.length > 0 ||
+    dataset.posSummaries.length > 0 ||
+    dataset.bankAccounts.length > 0 ||
+    dataset.systemBankRows.length > 0 ||
+    dataset.statementBankRows.length > 0;
+
+  if (!hasTreasuryData) {
+    return (
+      <ErpPageLayout>
+        <ErpPageHeader title={tTreasury("title")} description={tTreasury("subtitle")} />
+        <section className="surface-card col-span-12 p-6">
+          <EmptyState
+            variant="no-data"
+            title={isAr ? "لا توجد بيانات خزينة بعد" : "No treasury data yet"}
+            description={
+              isAr
+                ? "أضف معاملات مدفوعات لتفعيل لوحة النقدية والتسويات البنكية."
+                : "Add payment transactions to populate cash dashboard and bank reconciliation."
+            }
+            action={(
+              <Link
+                href="/operations"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-white px-3 text-xs font-semibold text-finance transition hover:bg-slate-50 hover:text-primary"
+              >
+                {isAr ? "الذهاب إلى مركز العمليات" : "Go To Operations Hub"}
+              </Link>
+            )}
+          />
+        </section>
+      </ErpPageLayout>
+    );
+  }
 
   return (
     <ErpPageLayout>

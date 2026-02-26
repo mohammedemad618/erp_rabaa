@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   ApprovalStepStatus,
   EmployeeGrade,
   PolicyComplianceLevel,
@@ -249,6 +249,7 @@ const dictionary: Record<SupportedLocale, TravelDictionary> = {
       travel_desk: "Travel Desk",
       finance: "Finance",
       admin: "Admin",
+      agent: "Agent",
     },
     transition: {
       submit_request: "Submit Request",
@@ -425,10 +426,11 @@ const dictionary: Record<SupportedLocale, TravelDictionary> = {
     },
     roles: {
       employee: "موظف",
-      manager: "مدير",
+      manager: "مدير مباشر",
       travel_desk: "مكتب السفر",
-      finance: "المالية",
+      finance: "الإدارة المالية",
       admin: "مدير النظام",
+      agent: "وكيل",
     },
     transition: {
       submit_request: "إرسال الطلب",

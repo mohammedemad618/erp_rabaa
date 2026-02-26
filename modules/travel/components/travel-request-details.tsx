@@ -15,11 +15,14 @@ import type {
     BookingFormState,
     ExpenseFormState,
 } from "../types";
+import type { AnyServiceBooking } from "@/modules/services/types";
+import { SERVICE_CATEGORIES } from "@/modules/services/types";
 import type { TravelTransitionId, TravelTransitionBlockReason } from "../workflow/travel-approval-engine";
 import type { TravelDictionary } from "../i18n";
 
 interface TravelRequestDetailsProps {
     request: TravelRequest;
+    linkedBookings: AnyServiceBooking[];
     locale: string;
     isArabic: boolean;
     t: TravelDictionary;
@@ -59,7 +62,7 @@ interface TravelRequestDetailsProps {
     handleFinanceSync: () => void;
 }
 
-type TravelDetailTab = "overview" | "operations" | "workflow" | "audit";
+type TravelDetailTab = "overview" | "services" | "operations" | "workflow" | "audit";
 
 const requestStatusStyles: Record<TravelRequestStatus, string> = {
     draft: "bg-slate-100 text-slate-700",
@@ -190,6 +193,7 @@ const formBlockClass = "rounded-lg border border-border bg-slate-50/70 p-3";
 
 export function TravelRequestDetails({
     request,
+    linkedBookings,
     locale,
     t,
     layoutText,
@@ -239,6 +243,7 @@ export function TravelRequestDetails({
                     {(
                         [
                             { id: "overview", label: layoutText.detailOverview },
+                            { id: "services", label: locale === "ar" ? "الخدمات المرتبطة" : "Linked Services" },
                             { id: "operations", label: layoutText.detailOperations },
                             { id: "workflow", label: layoutText.detailWorkflow },
                             { id: "audit", label: layoutText.detailAudit },
@@ -372,6 +377,84 @@ export function TravelRequestDetails({
                             </div>
                         </section>
                     </>
+                )}
+
+                {detailTab === "services" && (
+                    <section className="surface-card p-4 xl:col-span-2">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-finance">
+                                {locale === "ar" ? "الخدمات المرتبطة بالرحلة" : "Services Linked to Trip"}
+                            </h3>
+                            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
+                                {linkedBookings.length} {locale === "ar" ? "خدمة" : "service(s)"}
+                            </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            {locale === "ar"
+                                ? "حجوزات الفنادق والتأشيرات والتأمين والنقل المرتبطة بطلب السفر هذا."
+                                : "Hotel, visa, insurance, and transfer bookings linked to this travel request."}
+                        </p>
+
+                        {linkedBookings.length > 0 ? (
+                            <div className="mt-4 space-y-3">
+                                {linkedBookings.map((booking) => {
+                                    const catInfo = SERVICE_CATEGORIES.find((c) => c.id === booking.category);
+                                    return (
+                                        <article
+                                            key={booking.id}
+                                            className="rounded-lg border border-border bg-white p-3 text-xs transition hover:shadow-sm"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${catInfo?.bgColor ?? "bg-slate-50"}`}>
+                                                        <span className="text-xs font-bold">{booking.id.split("-")[0]}</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-finance">{booking.id}</p>
+                                                        <p className="text-[11px] text-muted-foreground">
+                                                            {locale === "ar" ? catInfo?.labelAr : catInfo?.labelEn}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                                    booking.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
+                                                    booking.status === "pending" ? "bg-amber-100 text-amber-700" :
+                                                    booking.status === "completed" ? "bg-slate-100 text-slate-600" :
+                                                    "bg-blue-100 text-blue-700"
+                                                }`}>
+                                                    {booking.status}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">{locale === "ar" ? "العميل" : "Customer"}</span>
+                                                    <span className="font-medium text-finance">{booking.customerName}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">{locale === "ar" ? "المبلغ" : "Amount"}</span>
+                                                    <span className="font-medium text-finance">{formatCurrency(booking.totalAmount, locale, booking.currency)}</span>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="mt-6 flex flex-col items-center justify-center py-8 text-center">
+                                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                                    <span className="text-lg text-slate-400">🔗</span>
+                                </div>
+                                <p className="text-sm font-medium text-finance">
+                                    {locale === "ar" ? "لا توجد خدمات مرتبطة" : "No Linked Services"}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {locale === "ar"
+                                        ? "يمكن ربط حجوزات الخدمات بطلب السفر هذا لتتبع شامل."
+                                        : "Service bookings can be linked to this travel request for comprehensive tracking."}
+                                </p>
+                            </div>
+                        )}
+                    </section>
                 )}
 
                 {detailTab === "operations" && (

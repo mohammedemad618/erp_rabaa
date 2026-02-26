@@ -5,7 +5,16 @@ const SESSION_TTL_SECONDS = 60 * 60 * 10;
 const SECRET_FALLBACK = "enterprise-travel-erp-local-session-secret";
 
 function getSessionSecret(): string {
-  return process.env.AUTH_SESSION_SECRET ?? SECRET_FALLBACK;
+  const configuredSecret = process.env.AUTH_SESSION_SECRET?.trim();
+  if (configuredSecret) {
+    return configuredSecret;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return SECRET_FALLBACK;
+  }
+
+  throw new Error("AUTH_SESSION_SECRET must be configured in production.");
 }
 
 function encodeBase64Url(value: string): string {

@@ -27,34 +27,37 @@ export type AuthPermission =
   | "settings.view"
   | "settings.manage";
 
+/** صلاح كامل — كل الصلاحيات في النظام (يُعطى لـ admin) */
+export const FULL_PERMISSIONS: readonly AuthPermission[] = [
+  "dashboard.view",
+  "transactions.view",
+  "accounting.view",
+  "bsp.view",
+  "treasury.view",
+  "crm.view",
+  "expenses.view",
+  "reports.view",
+  "ocr.view",
+  "templates.view",
+  "travel.view",
+  "travel.policy.view",
+  "travel.policy.manage",
+  "travel.create",
+  "travel.transition",
+  "travel.booking.manage",
+  "travel.expense.submit",
+  "travel.expense.review",
+  "travel.finance.sync",
+  "travel.auto_approve",
+  "travel.audit_export",
+  "sales.transition",
+  "ocr.extract",
+  "settings.view",
+  "settings.manage",
+] as const;
+
 const ROLE_PERMISSIONS: Record<EnterpriseRole, AuthPermission[]> = {
-  admin: [
-    "dashboard.view",
-    "transactions.view",
-    "accounting.view",
-    "bsp.view",
-    "treasury.view",
-    "crm.view",
-    "expenses.view",
-    "reports.view",
-    "ocr.view",
-    "templates.view",
-    "travel.view",
-    "travel.policy.view",
-    "travel.policy.manage",
-    "travel.create",
-    "travel.transition",
-    "travel.booking.manage",
-    "travel.expense.submit",
-    "travel.expense.review",
-    "travel.finance.sync",
-    "travel.auto_approve",
-    "travel.audit_export",
-    "sales.transition",
-    "ocr.extract",
-    "settings.view",
-    "settings.manage",
-  ],
+  admin: [...FULL_PERMISSIONS],
   finance_manager: [
     "dashboard.view",
     "transactions.view",
@@ -131,5 +134,13 @@ export function getRolePermissions(role: EnterpriseRole): AuthPermission[] {
 }
 
 export function hasPermission(role: EnterpriseRole, permission: AuthPermission): boolean {
+  if (role === "admin") return true;
   return ROLE_PERMISSIONS[role].includes(permission);
+}
+
+/** تحقق إن كان الدور يملك الصلاح الكامل (كل الصلاحيات) */
+export function hasFullPermissions(role: EnterpriseRole): boolean {
+  if (role === "admin") return true;
+  const perms = ROLE_PERMISSIONS[role];
+  return perms.length === FULL_PERMISSIONS.length && FULL_PERMISSIONS.every((p) => perms.includes(p));
 }

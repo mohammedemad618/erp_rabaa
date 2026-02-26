@@ -8,6 +8,6 @@ export async function GET() {
     return guard.response;
   }
 
-  const activeVersion = getActiveTravelPolicyVersion();
+  const activeVersion = await getActiveTravelPolicyVersion();
   return NextResponse.json(activeVersion, { status: 200 });
 }

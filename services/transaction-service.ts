@@ -3,6 +3,6 @@ import type { Transaction } from "@/modules/transactions/types";
 
 export const transactionService = {
   async list(): Promise<Transaction[]> {
-    return listTransactions();
+    return await listTransactions();
   },
 };

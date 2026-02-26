@@ -56,7 +56,7 @@ export async function POST(
     );
   }
 
-  const result = reviewTravelExpense({
+  const result = await reviewTravelExpense({
     requestId,
     expenseId,
     actorRole,

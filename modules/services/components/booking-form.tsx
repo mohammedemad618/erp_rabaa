@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { ServiceCategory } from "../types";
 
 interface BookingFormProps {
@@ -10,10 +13,6 @@ interface BookingFormProps {
   onSubmit: (data: Record<string, string>) => Promise<void>;
   onCancel: () => void;
 }
-
-const fieldClass =
-  "mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-foreground shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/70";
-const labelClass = "text-xs font-medium text-muted-foreground";
 
 const CATEGORY_FIELDS: Record<ServiceCategory, Array<{ key: string; labelEn: string; labelAr: string; type?: string; required?: boolean }>> = {
   hotel: [
@@ -110,23 +109,45 @@ export function BookingForm({ category, isAr, onSubmit, onCancel }: BookingFormP
     }
   }
 
+  const isTextarea = (key: string) => key === "notes";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {fields.map((field) => (
-          <label key={field.key} className={labelClass}>
-            {isAr ? field.labelAr : field.labelEn}
-            {field.required && <span className="text-rose-500"> *</span>}
-            <input
-              type={field.type ?? "text"}
-              value={formData[field.key] ?? ""}
-              onChange={(e) => updateField(field.key, e.target.value)}
-              required={field.required}
-              className={fieldClass}
-              placeholder={isAr ? field.labelAr : field.labelEn}
-            />
-          </label>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {fields.map((field) => {
+          const label = isAr ? field.labelAr : field.labelEn;
+          const placeholder = label;
+          if (isTextarea(field.key)) {
+            return (
+              <FormField
+                key={field.key}
+                label={label}
+                required={field.required}
+                fullWidth
+                className="sm:col-span-2"
+              >
+                <Textarea
+                  value={formData[field.key] ?? ""}
+                  onChange={(e) => updateField(field.key, e.target.value)}
+                  required={field.required}
+                  placeholder={placeholder}
+                  rows={3}
+                />
+              </FormField>
+            );
+          }
+          return (
+            <FormField key={field.key} label={label} required={field.required}>
+              <Input
+                type={(field.type ?? "text") as "text" | "email" | "number" | "date" | "datetime-local"}
+                value={formData[field.key] ?? ""}
+                onChange={(e) => updateField(field.key, e.target.value)}
+                required={field.required}
+                placeholder={placeholder}
+              />
+            </FormField>
+          );
+        })}
       </div>
       <div className="flex gap-2 pt-2">
         <Button type="submit" loading={isSubmitting} className="flex-1">

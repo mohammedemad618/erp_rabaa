@@ -1,0 +1,259 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// --- Travel Domain ---
+
+model TravelRequest {
+  id                    String   @id @map("_id")
+  customerId            String?
+  linkedServiceBookings String[]
+  employeeName          String
+  employeeEmail         String
+  employeeGrade         String
+  department            String
+  costCenter            String
+  tripType              String
+  origin                String
+  destination           String
+  departureDate         String
+  returnDate            String
+  purpose               String
+  travelClass           String
+  baseEstimatedCost     Float
+  additionalServicesCost Float
+  estimatedCost         Float
+  currency              String
+  status                String   // "draft", "submitted", "manager_approved", etc.
+  
+  // Approval Route
+  approvalRoute         ApprovalStep[]
+  
+  // Policy Evaluation
+  policyEvaluation      PolicyEvaluation?
+  
+  // Booking Info
+  booking               BookingInfo?
+  
+  // Expenses
+  expenses              ExpenseClaim[]
+  
+  // Finance Sync
+  financeSync           FinanceSyncState?
+  
+  // Trip Closure
+  closure               TripClosureRecord?
+  
+  // System Fields
+  version               Int      @default(1)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String
+  updatedBy             String
+  
+  // Audit Trail
+  auditTrail            TravelAuditEvent[]
+
+  @@index([status])
+  @@index([employeeEmail])
+  @@index([department])
+  @@index([createdAt])
+  @@map("travel_requests")
+}
+
+type ApprovalStep {
+  stepId      String
+  role        String
+  status      String   // "pending", "approved", "rejected", "skipped"
+  actorName   String?
+  at          String?
+  note        String?
+}
+
+type PolicyEvaluation {
+  policyId    String
+  level       String   // "compliant", "warning", "blocked"
+  evaluatedAt String
+  findings    PolicyFinding[]
+}
+
+type PolicyFinding {
+  code        String
+  level       String
+  message     String
+  field       String?
+}
+
+type BookingInfo {
+  vendor           String
+  bookingReference String
+  ticketNumber     String?
+  bookedAt         String?
+  totalBookedCost  Float
+  currency         String
+}
+
+type ExpenseClaim {
+  id               String
+  category         String
+  amount           Float
+  currency         String
+  expenseDate      String
+  merchant         String
+  description      String
+  status           String   // "submitted", "approved", "rejected"
+  receipt          ReceiptInfo
+  reviewNote       String?
+  reviewedAt       String?
+  reviewedBy       String?
+  syncedAt         String?
+  financeBatchId   String?
+}
+
+type ReceiptInfo {
+  fileName         String
+  mimeType         String
+  sizeInBytes      Int
+}
+
+type FinanceSyncState {
+  status           String   // "not_synced", "pending", "synced", "failed"
+  lastAttemptAt    String?
+  attemptCount     Int      @default(0)
+  lastBatchId      String?
+  errorMessage     String?
+  ledgerLines      LedgerLine[]
+}
+
+type LedgerLine {
+  id               String
+  accountCode      String
+  description      String
+  debit            Float
+  credit           Float
+  currency         String
+}
+
+type TripClosureRecord {
+  closedAt                 String
+  closedBy                 String
+  closureNote              String?
+  totalExpenses            Int
+  totalApprovedAmount      Float
+  totalSettledAmount       Float
+  varianceFromBookedCost   Float
+  varianceFromEstimatedCost Float
+  financeBatchId           String?
+  financeAttemptCount      Int
+}
+
+type TravelAuditEvent {
+  id          String
+  at          String
+  actorRole   String
+  actorName   String
+  action      String
+  fromStatus  String?
+  toStatus    String?
+  note        String?
+}
+
+// --- Policy Domain ---
+
+model TravelPolicyVersion {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  versionId      String   @unique
+  status         String   // "active", "draft", "scheduled", "retired"
+  createdAt      DateTime @default(now())
+  createdBy      String
+  effectiveFrom  String
+  activatedAt    String?
+  activatedBy    String?
+  note           String?
+  config         Json     // Store the complex policy config as JSON for flexibility
+
+  @@map("travel_policies")
+}
+
+model TravelPolicyAudit {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  auditId     String   @unique
+  at          String
+  actorName   String
+  action      String
+  versionId   String
+  note        String?
+
+  @@map("travel_policy_audit")
+}
+
+// --- Sales/Transaction Domain ---
+
+model SalesTransaction {
+  id                String   @id @map("_id")
+  customerId        String
+  customerName      String
+  totalAmount       Float
+  currency          String
+  status            String   // "draft", "ocr_reviewed", "pending_approval", etc.
+  approvalState     String   // "pending", "approved", "rejected"
+  branch            String
+  type              String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  accountingPreview AccountingLine[]
+  approvalTimeline  ApprovalTimelineStep[]
+  auditMetadata     AuditMetadata?
+
+  @@index([status])
+  @@index([approvalState])
+  @@index([customerId])
+  @@map("sales_transactions")
+}
+
+type AccountingLine {
+  accountCode String
+  description String
+  debit       Float
+  credit      Float
+  currency    String
+}
+
+type ApprovalTimelineStep {
+  step        String
+  at          String
+  by          String
+  status      String
+  note        String?
+}
+
+type AuditMetadata {
+  createdBy String
+  createdAt String
+  updatedBy String
+  updatedAt String
+}
+
+// --- Identity/User Domain ---
+
+model User {
+  id        String   @id @map("_id")
+  name      String
+  email     String   @unique
+  role      String
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@map("users")
+}

@@ -7,6 +7,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "travel": "Travel Requests",
+    "operations": "Operations Hub",
     "settings": "Settings",
     "transactions": "Transactions",
     "accounting": "Accounting",
@@ -178,6 +179,80 @@
     },
     "empty": {
       "noSelection": "No transaction selected."
+    }
+  },
+  "operations": {
+    "title": "Operations Hub",
+    "subtitle": "Unified view of transactions and travel requests with approvals and workflow.",
+    "createTravel": "Create Travel Request",
+    "createPageDescription": "Fill in the form below to submit a new travel request. After submission you will be redirected to the Operations Hub.",
+    "typeAll": "All Types",
+    "typeTransactions": "Transactions",
+    "typeTravel": "Travel Requests",
+    "filters": {
+      "title": "Filters",
+      "description": "Filter by type, status, and search.",
+      "reset": "Reset",
+      "quickTitle": "Quick Filters"
+    },
+    "quickAll": "All",
+    "quickPending": "Pending Approval",
+    "quickHighValue": "High Value",
+    "quickCash": "Cash Only",
+    "tableTitle": "Operations List",
+    "table": {
+      "id": "ID",
+      "type": "Type",
+      "customerOrEmployee": "Customer / Employee",
+      "amount": "Amount",
+      "status": "Status",
+      "createdAt": "Created"
+    },
+    "kpi": {
+      "matched": "Matched",
+      "pending": "Pending",
+      "highValue": "High Value",
+      "totalAmount": "Total Amount"
+    },
+    "messages": {
+      "searchFocused": "Search focused"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "workflow": "Workflow",
+      "approval": "Approval",
+      "accounting": "Accounting",
+      "services": "Linked Services",
+      "audit": "Audit Trail"
+    },
+    "panel": {
+      "travelSummary": "Travel Request Summary",
+      "employee": "Employee",
+      "amount": "Amount",
+      "purpose": "Purpose",
+      "department": "Department",
+      "linkedServicesTitle": "Services Linked to Trip",
+      "linkedServicesCount": "{count} service(s)",
+      "linkedServicesDesc": "Hotel, visa, insurance, and transfer bookings linked to this travel request.",
+      "linkedServicesEmpty": "No Linked Services",
+      "linkedServicesEmptyDesc": "Service bookings can be linked to this travel request for comprehensive tracking.",
+      "auditTrail": "Audit Trail",
+      "auditActor": "Actor",
+      "auditFromTo": "From -> To",
+      "auditNote": "Note",
+      "customer": "Customer",
+      "amountLabel": "Amount"
+    },
+    "travelStatus": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "manager_approved": "Manager Approved",
+      "travel_review": "Travel Review",
+      "finance_approved": "Finance Approved",
+      "booked": "Booked",
+      "closed": "Closed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
     }
   },
   "salesFlow": {
@@ -899,7 +974,7 @@
     "logout": "Logout",
     "login": {
       "title": "Enterprise Sign In",
-      "subtitle": "Use one of the demo enterprise accounts to access protected modules.",
+      "subtitle": "Sign in with your account to access the system.",
       "email": "Email",
       "password": "Password",
       "submit": "Sign In",

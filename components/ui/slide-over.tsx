@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { cn } from "@/utils/cn";
 import { Button } from "./button";
 
@@ -33,6 +33,8 @@ export function SlideOver({
     size = "md",
 }: SlideOverProps) {
     const [mounted, setMounted] = useState(false);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const previousActiveElement = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         const t = setTimeout(() => setMounted(true), 0);
@@ -44,13 +46,35 @@ export function SlideOver({
 
         if (isOpen) {
             document.body.style.overflow = "hidden";
+            // Store currently focused element
+            previousActiveElement.current = document.activeElement as HTMLElement;
+            // Focus the panel
+            setTimeout(() => {
+                panelRef.current?.focus();
+            }, 50);
         } else {
             document.body.style.overflow = "unset";
+            // Restore focus
+            previousActiveElement.current?.focus();
         }
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!isOpen) return;
+
+            if (e.key === "Escape") {
+                onClose();
+            }
+            
+            // Focus trap can be added here similar to Modal if needed
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+
         return () => {
             document.body.style.overflow = "unset";
+            window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [isOpen, mounted]);
+    }, [isOpen, mounted, onClose]);
 
     if (!mounted) return null;
 
@@ -63,15 +87,22 @@ export function SlideOver({
                     isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
                 )}
                 onClick={onClose}
+                aria-hidden="true"
             />
 
             {/* Panel */}
             <div
+                ref={panelRef}
                 className={cn(
-                    "fixed inset-y-0 z-50 flex w-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out sm:ring-1 sm:ring-slate-900/10 ltr:right-0 rtl:left-0",
+                    "fixed inset-y-0 z-50 flex w-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out sm:ring-1 sm:ring-slate-900/10 ltr:right-0 rtl:left-0 outline-none",
                     sizeClasses[size],
                     isOpen ? "translate-x-0" : "ltr:translate-x-full rtl:-translate-x-full"
                 )}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="slide-over-title"
+                aria-describedby={description ? "slide-over-description" : undefined}
+                tabIndex={-1}
             >
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                     <div>
@@ -79,11 +110,16 @@ export function SlideOver({
                             {title}
                         </h2>
                         {description && (
-                            <p className="mt-1 text-sm text-slate-500">{description}</p>
+                            <p id="slide-over-description" className="mt-1 text-sm text-slate-500">{description}</p>
                         )}
                     </div>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full ltr:-mr-2 rtl:-ml-2">
-                        <span className="sr-only">Close panel</span>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={onClose} 
+                        className="rounded-full ltr:-mr-2 rtl:-ml-2"
+                        aria-label="Close panel"
+                    >
                         <X className="h-5 w-5" aria-hidden="true" />
                     </Button>
                 </div>

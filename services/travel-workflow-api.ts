@@ -113,10 +113,28 @@ interface ActivatePolicyVersionPayload {
 }
 
 async function parseApiResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
-  const payload = (await response.json()) as T | ApiErrorPayload;
+  const raw = await response.text();
+  let payload: unknown = null;
+  if (raw.trim().length > 0) {
+    try {
+      payload = JSON.parse(raw) as T | ApiErrorPayload;
+    } catch {
+      payload = { message: raw.trim() } satisfies ApiErrorPayload;
+    }
+  }
+
   if (!response.ok) {
-    const message = (payload as ApiErrorPayload).message ?? fallbackMessage;
+    const message =
+      payload &&
+      typeof payload === "object" &&
+      "message" in payload &&
+      typeof (payload as ApiErrorPayload).message === "string"
+        ? (payload as ApiErrorPayload).message ?? fallbackMessage
+        : fallbackMessage;
     throw new Error(message);
+  }
+  if (!payload) {
+    throw new Error(fallbackMessage);
   }
   return payload as T;
 }

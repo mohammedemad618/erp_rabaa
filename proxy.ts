@@ -1,68 +1,59 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AUTH_SESSION_COOKIE } from "@/services/auth/constants";
+import createMiddleware from "next-intl/middleware";
 
-const LOCALE_PATTERN = /^\/(en|ar)(?:\/|$)/i;
+const intlProxy = createMiddleware({
+  locales: ["en", "ar"],
+  defaultLocale: "en",
+});
 
-function isStaticAsset(pathname: string): boolean {
-  return (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/public") ||
-    /\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map|txt|woff|woff2)$/i.test(pathname)
-  );
+const rateLimit = new Map<string, { count: number; lastReset: number }>();
+const WINDOW_SIZE = 60 * 1000;
+const MAX_REQUESTS = 100;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = rateLimit.get(ip);
+
+  if (!record) {
+    rateLimit.set(ip, { count: 1, lastReset: now });
+    return true;
+  }
+
+  if (now - record.lastReset > WINDOW_SIZE) {
+    record.count = 1;
+    record.lastReset = now;
+    return true;
+  }
+
+  if (record.count >= MAX_REQUESTS) {
+    return false;
+  }
+
+  record.count += 1;
+  return true;
 }
 
-function extractLocale(pathname: string): string | null {
-  const match = pathname.match(LOCALE_PATTERN);
-  if (!match) {
-    return null;
-  }
-  return match[1].toLowerCase();
-}
-
-export function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
-
-  if (isStaticAsset(pathname)) {
-    return NextResponse.next();
-  }
-
-  const sessionToken = request.cookies.get(AUTH_SESSION_COOKIE)?.value;
-
-  if (pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
-  }
-
-  if (pathname.startsWith("/api")) {
-    if (!sessionToken) {
-      return NextResponse.json(
+export default function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api")) {
+    const ip = request.headers.get("x-forwarded-for") || "anonymous";
+    if (!checkRateLimit(ip)) {
+      return new NextResponse(
+        JSON.stringify({ code: "rate_limit_exceeded", message: "Too many requests" }),
         {
-          code: "unauthorized",
-          message: "Authentication required.",
+          status: 429,
+          headers: { "Content-Type": "application/json" },
         },
-        { status: 401 },
       );
     }
-    return NextResponse.next();
   }
 
-  const locale = extractLocale(pathname);
-  if (!locale) {
-    return NextResponse.next();
-  }
-
-  const isLoginRoute = pathname === `/${locale}/login` || pathname.startsWith(`/${locale}/login/`);
-  if (!sessionToken && !isLoginRoute) {
-    const loginUrl = new URL(`/${locale}/login`, request.url);
-    const nextPath = `${pathname}${search}`;
-    loginUrl.searchParams.set("next", nextPath);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return NextResponse.next();
+  return intlProxy(request);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  matcher: [
+    "/((?!api|_next|_vercel|.*\\..*).*)",
+    "/([\\w-]+)?/users/(.+)",
+  ],
 };

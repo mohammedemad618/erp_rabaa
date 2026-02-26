@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
   }
 
   const resolvedPolicy = isNonEmptyText(body.policyVersionId)
-    ? getTravelPolicyVersion(body.policyVersionId)?.config
-    : getActiveTravelPolicy();
+    ? (await getTravelPolicyVersion(body.policyVersionId))?.config
+    : await getActiveTravelPolicy();
   if (!resolvedPolicy) {
     return NextResponse.json(
       {

@@ -2,28 +2,24 @@
 
 import {
   BarChart3,
-  Building2,
-  Bus,
   Calculator,
-  Car,
-  Cog,
   ChevronLeft,
   ChevronRight,
-  FileCheck,
+  Cog,
   FileText,
   Globe,
   LayoutDashboard,
   Landmark,
   LogOut,
-  Plane,
   type LucideIcon,
   Printer,
   ReceiptText,
   Scale,
   Ticket,
   Users,
-  Shield,
-  Map,
+  Settings2,
+  Menu,
+  X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -37,6 +33,8 @@ import { requiredPermissionForRoute } from "@/services/auth/page-permissions";
 import { cn } from "@/utils/cn";
 import { LocaleSwitcher } from "./locale-switcher";
 import { CommandPalette } from "./command-palette";
+import { NotificationCenter } from "./notification-center";
+import { Home } from "lucide-react";
 
 interface AppShellProps {
   children: ReactNode;
@@ -75,7 +73,7 @@ export function AppShell({ children }: AppShellProps) {
   const tRoles = useTranslations("roles");
   const tSections = useTranslations("navSections");
   const pathname = usePathname();
-  const isLoginRoute = pathname === "/login";
+  const isLoginRoute = pathname === "/login" || pathname.endsWith("/login");
 
   const sections: NavSection[] = [
     {
@@ -85,23 +83,18 @@ export function AppShell({ children }: AppShellProps) {
       ],
     },
     {
-      title: tSections("services"),
+      title: tSections("operations"),
       items: [
         { href: "/services", label: tNav("servicesHub"), icon: Globe, badge: 7 },
-        { href: "/services/hotels", label: tNav("hotels"), icon: Building2, badge: 1 },
-        { href: "/services/cars", label: tNav("carRental"), icon: Car, badge: 1 },
-        { href: "/services/visa", label: tNav("visa"), icon: FileCheck, badge: 3 },
-        { href: "/services/insurance", label: tNav("insurance"), icon: Shield },
-        { href: "/services/tours", label: tNav("tours"), icon: Map, badge: 1 },
-        { href: "/services/transfers", label: tNav("transfers"), icon: Bus, badge: 1 },
+        { href: "/services/manage", label: locale === "ar" ? "إدارة الخدمات" : "Manage Services", icon: Settings2 },
+        { href: "/operations", label: tNav("operations"), icon: Ticket },
+        { href: "/expenses", label: tNav("expenses"), icon: ReceiptText },
       ],
     },
     {
-      title: tSections("operations"),
+      title: locale === "ar" ? "العملاء" : "Customers",
       items: [
-        { href: "/travel", label: tNav("travel"), icon: Plane },
-        { href: "/transactions", label: tNav("transactions"), icon: Ticket },
-        { href: "/expenses", label: tNav("expenses"), icon: ReceiptText },
+        { href: "/crm", label: tNav("crm"), icon: Users },
       ],
     },
     {
@@ -115,7 +108,6 @@ export function AppShell({ children }: AppShellProps) {
     {
       title: tSections("tools"),
       items: [
-        { href: "/crm", label: tNav("crm"), icon: Users },
         { href: "/reports", label: tNav("reports"), icon: BarChart3 },
         { href: "/ocr", label: tNav("ocr"), icon: FileText },
         { href: "/templates", label: tNav("templates"), icon: Printer },
@@ -125,6 +117,7 @@ export function AppShell({ children }: AppShellProps) {
   ];
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [contentVersion, setContentVersion] = useState(0);
   const [authLoading, setAuthLoading] = useState(true);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
@@ -134,11 +127,17 @@ export function AppShell({ children }: AppShellProps) {
     function onSettingsChange() {
       setContentVersion((v) => v + 1);
     }
+    function onStorageChange(ev: StorageEvent) {
+      if (ev.key === SETTINGS_STORAGE_KEY) {
+        onSettingsChange();
+      }
+    }
     window.addEventListener(SETTINGS_CHANGED_EVENT, onSettingsChange);
-    window.addEventListener("storage", (ev) => {
-      if (ev.key === SETTINGS_STORAGE_KEY) onSettingsChange();
-    });
-    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, onSettingsChange);
+    window.addEventListener("storage", onStorageChange);
+    return () => {
+      window.removeEventListener(SETTINGS_CHANGED_EVENT, onSettingsChange);
+      window.removeEventListener("storage", onStorageChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -171,6 +170,11 @@ export function AppShell({ children }: AppShellProps) {
     setAuthLoading(true);
     void loadSession();
     return () => { active = false; };
+  }, [pathname]);
+
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    setIsMobileOpen(false);
   }, [pathname]);
 
   function isRouteActive(href: string): boolean {
@@ -216,22 +220,48 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  const collapsed = isSidebarCollapsed;
+  const collapsed = isSidebarCollapsed && !isMobileOpen;
 
   return (
-    <div className={cn("grid min-h-screen transition-all duration-300", collapsed ? "lg:grid-cols-[64px_1fr]" : "lg:grid-cols-[240px_1fr]")}>
+    <div className={cn("grid min-h-screen transition-all duration-300",
+      collapsed ? "lg:grid-cols-[64px_1fr]" : "lg:grid-cols-[240px_1fr]"
+    )}>
+
+      {/* Mobile backdrop */}
+      {isMobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="no-print flex flex-col border-e border-border bg-white">
+      <aside className={cn(
+        "no-print flex flex-col border-e border-border bg-white",
+        "fixed inset-y-0 start-0 z-50 transition-transform duration-300 ease-in-out",
+        "lg:static lg:translate-x-0 w-64 lg:w-auto",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
         {/* Brand */}
-        <div className={cn("flex items-center border-b border-border/50 px-3 py-4", collapsed && "justify-center px-2")}>
-          {collapsed ? (
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white text-sm font-bold">R</div>
-          ) : (
-            <div>
-              <p className="text-sm font-bold text-primary">{tApp("name")}</p>
-              <p className="text-[10px] text-muted-foreground">{tApp("product")}</p>
-            </div>
-          )}
+        <div className={cn("flex items-center justify-between border-b border-border/50 px-3 py-4", collapsed && "lg:justify-center lg:px-2")}>
+          <div className="flex items-center gap-2">
+            {collapsed ? (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white text-sm font-bold">R</div>
+            ) : (
+              <div>
+                <p className="text-sm font-bold text-primary">{tApp("name")}</p>
+                <p className="text-[10px] text-muted-foreground">{tApp("product")}</p>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="lg:hidden p-1 text-slate-500 hover:bg-slate-100 rounded-md"
+            onClick={() => setIsMobileOpen(false)}
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
 
         {/* Nav */}
@@ -258,19 +288,19 @@ export function AppShell({ children }: AppShellProps) {
                         title={collapsed ? item.label : undefined}
                         className={cn(
                           "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all relative",
-                          collapsed && "justify-center px-0 py-2.5",
+                          collapsed && "lg:justify-center lg:px-0 lg:py-2.5",
                           active
                             ? "bg-primary text-white shadow-sm shadow-primary/25"
                             : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                         )}
                       >
-                        <Icon className={cn("h-4 w-4 shrink-0", collapsed && "h-[18px] w-[18px]")} />
-                        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                        <Icon className={cn("h-4 w-4 shrink-0", collapsed && "lg:h-[18px] lg:w-[18px]")} />
+                        {(!collapsed || isMobileOpen) && <span className="flex-1 truncate">{item.label}</span>}
                         {item.badge && item.badge > 0 ? (
                           <span className={cn(
                             "flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[9px] font-bold",
                             active ? "bg-white/25 text-white" : "bg-amber-100 text-amber-700",
-                            collapsed && "absolute -top-0.5 -end-0.5 h-4 min-w-4 text-[8px]",
+                            collapsed && "lg:absolute lg:-top-0.5 lg:-end-0.5 lg:h-4 lg:min-w-4 lg:text-[8px]",
                           )}>
                             {item.badge}
                           </span>
@@ -285,50 +315,66 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         {/* User + Collapse */}
-        <div className="border-t border-border/50 p-2 space-y-1.5">
-          {!collapsed && sessionUser && (
-            <div className="rounded-lg bg-slate-50 px-3 py-2">
-              <p className="text-xs font-semibold text-finance truncate">{sessionUser.name}</p>
-              <p className="text-[10px] text-muted-foreground">{roleLabelMap[sessionUser.role] ?? sessionUser.role}</p>
+        <div className="border-t border-border/50 p-2 space-y-2 pb-safe">
+          {(!collapsed || isMobileOpen) && sessionUser && (
+            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+              <p className="text-sm font-semibold text-finance truncate">{sessionUser.name}</p>
+              <p className="text-xs text-muted-foreground">{roleLabelMap[sessionUser.role] ?? sessionUser.role}</p>
             </div>
           )}
-          {collapsed && sessionUser && (
-            <div className="flex justify-center" title={sessionUser.name}>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+          {collapsed && !isMobileOpen && sessionUser && (
+            <div className="hidden lg:flex justify-center py-1" title={sessionUser.name}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                 {sessionUser.name?.charAt(0) ?? "U"}
               </div>
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className={cn(
-              "flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-white text-xs text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200",
-              collapsed ? "h-8 w-full" : "h-8 px-2",
-            )}
-            title={collapsed ? tAuth("logout") : undefined}
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            {!collapsed && tAuth("logout")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSidebarCollapsed(!collapsed)}
-            className="flex w-full items-center justify-center rounded-lg border border-border bg-white h-8 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-lg border border-border bg-white text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/20",
+                collapsed ? "h-9 w-full" : "h-9 px-3 flex-1",
+              )}
+              title={collapsed ? tAuth("logout") : undefined}
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              {(!collapsed || isMobileOpen) && tAuth("logout")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(!collapsed)}
+              className="hidden lg:flex w-9 items-center justify-center rounded-lg border border-border bg-white h-9 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" aria-hidden="true" /> : <ChevronLeft className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Main content area */}
-      <div className="flex min-h-screen flex-col bg-slate-50/30">
+      <div className="flex min-w-0 min-h-screen flex-col bg-slate-50/30 lg:overflow-hidden">
         {/* Top bar */}
         <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-border bg-white/90 px-4 py-2.5 backdrop-blur lg:px-6">
-          <Breadcrumb pathname={pathname} sections={sections} />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="lg:hidden p-1.5 -ms-1.5 text-slate-500 hover:bg-slate-100 rounded-md"
+              onClick={() => setIsMobileOpen(true)}
+              aria-label="Open sidebar"
+              aria-expanded={isMobileOpen}
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <Breadcrumb pathname={pathname} sections={sections} />
+          </div>
           <div className="flex items-center gap-2">
             <CommandPalette />
+            <NotificationCenter />
             <LocaleSwitcher />
             {collapsed && sessionUser && (
               <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600">
@@ -348,19 +394,53 @@ export function AppShell({ children }: AppShellProps) {
 
 function Breadcrumb({ pathname, sections }: { pathname: string; sections: NavSection[] }) {
   const allItems = sections.flatMap((s) => s.items.map((i) => ({ ...i, section: s.title })));
-  const current = allItems.find((i) => i.href === "/" ? pathname === "/" : pathname.startsWith(i.href));
+  
+  // Find the most specific match (longest href)
+  const current = allItems
+    .filter((i) => i.href === "/" ? pathname === "/" : pathname.startsWith(i.href))
+    .sort((a, b) => b.href.length - a.href.length)[0];
 
   if (!current) return <div className="text-xs text-muted-foreground">&nbsp;</div>;
 
   const Icon = current.icon;
+  
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span className="text-slate-400">{current.section}</span>
-      <span className="text-slate-300">/</span>
-      <span className="flex items-center gap-1 font-medium text-finance">
-        <Icon className="h-3.5 w-3.5" />
+    <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Link 
+        href="/" 
+        className="flex items-center text-slate-400 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-sm"
+        aria-label="Home"
+      >
+        <Home className="h-3.5 w-3.5" />
+      </Link>
+      
+      <span className="text-slate-300" aria-hidden="true">/</span>
+      
+      <span className="text-slate-500 font-medium">{current.section}</span>
+      
+      <span className="text-slate-300" aria-hidden="true">/</span>
+      
+      <Link 
+        href={current.href}
+        className={cn(
+          "flex items-center gap-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-sm",
+          pathname === current.href ? "text-finance pointer-events-none" : "text-finance hover:text-primary"
+        )}
+        aria-current={pathname === current.href ? "page" : undefined}
+      >
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         {current.label}
-      </span>
-    </div>
+      </Link>
+
+      {/* Show sub-page if we are deeper than the menu item */}
+      {pathname.length > current.href.length && pathname !== "/" && (
+        <>
+           <span className="text-slate-300" aria-hidden="true">/</span>
+           <span className="text-slate-600 font-medium max-w-[150px] truncate" aria-current="page">
+             {pathname.split('/').pop()?.replace(/-/g, ' ') || 'Details'}
+           </span>
+        </>
+      )}
+    </nav>
   );
 }

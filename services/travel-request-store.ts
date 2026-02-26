@@ -1,7 +1,13 @@
-import { generateMockTravelRequests } from "@/modules/travel/data/mock-travel-requests";
+import prisma from "@/lib/prisma";
+import { runMongoCommand, toMongoDate } from "@/lib/mongo-helper";
+import { logger } from "@/lib/logger";
 import { evaluateTravelPolicy } from "@/modules/travel/policy/travel-policy-engine";
-import { buildTravelInsights, type TravelInsights } from "@/modules/travel/services/travel-insights";
+import {
+  buildTravelInsights,
+  type TravelInsights,
+} from "@/modules/travel/services/travel-insights";
 import { getActiveTravelPolicy } from "@/services/travel-policy-store";
+import { upsertTravelSettlementTransaction } from "@/services/transaction-store";
 import type {
   CreateTravelRequestInput,
   TravelClosureReadiness,
@@ -11,10 +17,9 @@ import type {
   TravelAuditEvent,
   TravelExpenseCategory,
   TravelExpenseClaim,
-  TravelExpenseStatus,
   TravelClass,
-  TravelFinanceSyncState,
   TravelLedgerLine,
+  TravelBookingRecord,
   TravelRequest,
   TravelRequestStatus,
   TravelTripClosureRecord,
@@ -24,6 +29,7 @@ import {
   applyTransitionToApprovalRoute,
   buildInitialApprovalRoute,
   getTravelTransitionOption,
+  type TravelTransitionBlockReason,
   type TravelTransitionId,
 } from "@/modules/travel/workflow/travel-approval-engine";
 
@@ -53,9 +59,37 @@ const GL_ACCOUNT_BY_EXPENSE_CATEGORY: Record<TravelExpenseCategory, string> = {
   other: "610900",
 };
 
+let legacyTravelRequestDataNormalized = false;
+
+async function ensureTravelRequestDataCompatibility(): Promise<void> {
+  if (legacyTravelRequestDataNormalized) {
+    return;
+  }
+
+  // Legacy records may contain approvalRoute entries with `id` instead of required `stepId`.
+  // Prisma rejects those rows; reset corrupted approval routes to keep list/read flows operational.
+  await runMongoCommand("travel_requests", "update", {
+    updates: [
+      {
+        q: { "approvalRoute.stepId": null },
+        u: { $set: { approvalRoute: [] } },
+        multi: true,
+      },
+      {
+        q: { "financeSync.ledgerLines.accountCode": null },
+        u: { $set: { "financeSync.ledgerLines": [] } },
+        multi: true,
+      },
+    ],
+  });
+
+  legacyTravelRequestDataNormalized = true;
+}
+
 interface CreateTravelRequestPayload extends CreateTravelRequestInput {
   actorRole: TravelActorRole;
   actorName: string;
+  linkedServiceBookingIds?: string[];
 }
 
 interface ApplyTravelTransitionInput {
@@ -256,8 +290,7 @@ interface SyncTravelFinanceFailure {
   error: {
     code:
       | "request_not_found"
-      | "role_not_allowed"
-      | "validation_failed"
+      | "role_not_allowed" | "validation_failed"
       | "no_expenses_to_sync"
       | "already_synced"
       | "sync_failed";
@@ -287,51 +320,154 @@ export type GetTravelTripClosureReadinessResult =
   | GetTravelTripClosureReadinessSuccess
   | GetTravelTripClosureReadinessFailure;
 
-let travelRequestState: TravelRequest[] | null = null;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * MongoDB helper to map Prisma model to Domain type
+ */
+function mapPrismaToTravelRequest(data: any): TravelRequest {
+  const policyEvaluationRaw =
+    data.policyEvaluation && typeof data.policyEvaluation === "object"
+      ? data.policyEvaluation
+      : null;
+  const policyEvaluation = policyEvaluationRaw
+    ? {
+      policyVersion:
+        typeof policyEvaluationRaw.policyId === "string"
+          ? policyEvaluationRaw.policyId
+          : "unknown",
+      level:
+        typeof policyEvaluationRaw.level === "string"
+          ? (policyEvaluationRaw.level as any)
+          : ("warning" as any),
+      findings: Array.isArray(policyEvaluationRaw.findings) ? policyEvaluationRaw.findings : [],
+      evaluatedAt:
+        typeof policyEvaluationRaw.evaluatedAt === "string"
+          ? policyEvaluationRaw.evaluatedAt
+          : (
+            (data.updatedAt instanceof Date ? data.updatedAt.toISOString() : data.updatedAt)
+            ?? (data.createdAt instanceof Date ? data.createdAt.toISOString() : data.createdAt)
+            ?? new Date().toISOString()
+          ),
+    }
+    : {
+      policyVersion: "unknown",
+      level: "warning" as any,
+      findings: [
+        {
+          code: "policy_evaluation_missing",
+          level: "warning",
+          message: "Policy evaluation data is missing for this travel request.",
+        },
+      ],
+      evaluatedAt:
+        (data.updatedAt instanceof Date ? data.updatedAt.toISOString() : data.updatedAt)
+        ?? (data.createdAt instanceof Date ? data.createdAt.toISOString() : data.createdAt)
+        ?? new Date().toISOString(),
+    };
 
-function cloneAuditEvent(event: TravelAuditEvent): TravelAuditEvent {
-  return { ...event };
-}
+  const financeSync = data.financeSync
+    ? {
+      status: data.financeSync.status as any,
+      attemptCount: data.financeSync.attemptCount ?? 0,
+      lastAttemptAt: data.financeSync.lastAttemptAt ?? undefined,
+      lastError: data.financeSync.lastError ?? data.financeSync.errorMessage ?? undefined,
+      lastBatchId: data.financeSync.lastBatchId ?? undefined,
+      ledgerLines: (Array.isArray(data.financeSync.ledgerLines) ? data.financeSync.ledgerLines : []).map(
+        (line: any) => ({
+          id: line.id,
+          expenseId: typeof line.expenseId === "string" ? line.expenseId : "",
+          glAccount: line.glAccount ?? line.accountCode ?? "610900",
+          costCenter: line.costCenter ?? data.costCenter ?? "",
+          amount:
+            typeof line.amount === "number"
+              ? line.amount
+              : typeof line.debit === "number"
+                ? line.debit
+                : typeof line.credit === "number"
+                  ? line.credit
+                  : 0,
+          currency: line.currency ?? data.currency ?? "SAR",
+          memo: line.memo ?? line.description ?? "",
+        }),
+      ),
+    }
+    : {
+      status: "not_synced" as any,
+      attemptCount: 0,
+      ledgerLines: [],
+    };
 
-function cloneTravelRequest(request: TravelRequest): TravelRequest {
   return {
-    ...request,
-    approvalRoute: request.approvalRoute.map((step) => ({ ...step })),
-    policyEvaluation: {
-      ...request.policyEvaluation,
-      findings: request.policyEvaluation.findings.map((finding) => ({ ...finding })),
-    },
-    booking: request.booking ? { ...request.booking } : null,
-    expenses: request.expenses.map((expense) => ({
-      ...expense,
-      receipt: { ...expense.receipt },
+    id: data.id,
+    customerId: data.customerId ?? undefined,
+    linkedServiceBookings: Array.isArray(data.linkedServiceBookings) ? data.linkedServiceBookings : [],
+    employeeName: data.employeeName,
+    employeeEmail: data.employeeEmail,
+    employeeGrade: data.employeeGrade as any,
+    department: data.department,
+    costCenter: data.costCenter,
+    tripType: data.tripType as any,
+    origin: data.origin,
+    destination: data.destination,
+    departureDate: data.departureDate,
+    returnDate: data.returnDate,
+    purpose: data.purpose,
+    travelClass: data.travelClass as any,
+    baseEstimatedCost: data.baseEstimatedCost ?? undefined,
+    additionalServicesCost: data.additionalServicesCost ?? undefined,
+    estimatedCost: data.estimatedCost,
+    currency: data.currency,
+    status: data.status as any,
+    approvalRoute: (Array.isArray(data.approvalRoute) ? data.approvalRoute : []).map((step: any) => ({
+      id: step.stepId,
+      role: step.role as any,
+      status: step.status as any,
+      actorName: step.actorName ?? undefined,
+      actedAt: step.at ?? undefined,
+      note: step.note ?? undefined,
     })),
-    financeSync: {
-      ...request.financeSync,
-      ledgerLines: request.financeSync.ledgerLines.map((line) => ({ ...line })),
-    },
-    closure: request.closure ? { ...request.closure } : null,
-    auditTrail: request.auditTrail.map((event) => cloneAuditEvent(event)),
+    policyEvaluation,
+    booking: data.booking ? { ...data.booking } : null,
+    expenses: (Array.isArray(data.expenses) ? data.expenses : []).map((exp: any) => ({
+      ...exp,
+      status: exp.status as any,
+    })),
+    financeSync,
+    closure: data.closure ? { ...data.closure } : null,
+    createdAt:
+      data.createdAt instanceof Date
+        ? data.createdAt.toISOString()
+        : (typeof data.createdAt === "string" ? data.createdAt : new Date().toISOString()),
+    updatedAt:
+      data.updatedAt instanceof Date
+        ? data.updatedAt.toISOString()
+        : (typeof data.updatedAt === "string" ? data.updatedAt : new Date().toISOString()),
+    createdBy: data.createdBy,
+    updatedBy: data.updatedBy,
+    version: data.version,
+    auditTrail: (Array.isArray(data.auditTrail) ? data.auditTrail : []).map((evt: any) => ({
+      id: evt.id,
+      at: evt.at,
+      actorRole: evt.actorRole as any,
+      actorName: evt.actorName,
+      action: evt.action,
+      fromStatus: evt.fromStatus as any,
+      toStatus: evt.toStatus as any,
+      note: evt.note ?? undefined,
+    })),
   };
 }
-
-function ensureState(): TravelRequest[] {
-  if (!travelRequestState) {
-    travelRequestState = generateMockTravelRequests();
-  }
-  return travelRequestState;
-}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 function isNonEmptyText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function nextRequestId(rows: TravelRequest[]): string {
-  const max = rows.reduce((highest, row) => {
-    const match = /^TRV-(\d+)$/i.exec(row.id);
-    if (!match) {
-      return highest;
-    }
+async function generateNextRequestId(): Promise<string> {
+  const records = await prisma.travelRequest.findMany({ select: { id: true } });
+  const max = records.reduce((highest, record) => {
+    const match = /^TRV-(\d+)$/i.exec(record.id);
+    if (!match) return highest;
     const numeric = Number(match[1]);
     return Number.isFinite(numeric) ? Math.max(highest, numeric) : highest;
   }, 1000);
@@ -353,14 +489,6 @@ function nextExpenseId(request: TravelRequest): string {
 function nextBatchId(request: TravelRequest): string {
   const numeric = request.financeSync.attemptCount + 1;
   return `TRV-BATCH-${request.id.replace("TRV-", "")}-${String(numeric).padStart(3, "0")}`;
-}
-
-function createInitialFinanceSyncState(): TravelFinanceSyncState {
-  return {
-    status: "not_synced",
-    attemptCount: 0,
-    ledgerLines: [],
-  };
 }
 
 function createAuditEvent(
@@ -394,18 +522,14 @@ function buildTripClosureReadiness(
   now: Date = new Date(),
 ): TravelClosureReadiness {
   const checkedAt = now.toISOString();
-  const pendingExpenses = request.expenses.filter((expense) => expense.status === "submitted");
-  const approvedExpenses = request.expenses.filter((expense) => expense.status === "approved");
-  const approvedUnsyncedExpenses = approvedExpenses.filter((expense) => !expense.syncedAt);
-  const rejectedExpenses = request.expenses.filter((expense) => expense.status === "rejected");
+  const pendingExpenses = request.expenses.filter((e) => e.status === "submitted");
+  const approvedExpenses = request.expenses.filter((e) => e.status === "approved");
+  const approvedUnsyncedExpenses = approvedExpenses.filter((e) => !e.syncedAt);
+  const rejectedExpenses = request.expenses.filter((e) => e.status === "rejected");
 
-  const totalApprovedAmount = roundMoney(
-    approvedExpenses.reduce((sum, expense) => sum + expense.amount, 0),
-  );
+  const totalApprovedAmount = roundMoney(approvedExpenses.reduce((s, e) => s + e.amount, 0));
   const totalApprovedSyncedAmount = roundMoney(
-    approvedExpenses
-      .filter((expense) => expense.syncedAt)
-      .reduce((sum, expense) => sum + expense.amount, 0),
+    approvedExpenses.filter((e) => e.syncedAt).reduce((s, e) => s + e.amount, 0),
   );
 
   const returnDateMs = new Date(request.returnDate).getTime();
@@ -439,7 +563,7 @@ function buildTripClosureReadiness(
 
   return {
     checkedAt,
-    ready: checks.every((check) => check.passed),
+    ready: checks.every((c) => c.passed),
     requiresFinanceSync: approvedExpenses.length > 0,
     pendingExpenses: pendingExpenses.length,
     approvedExpenses: approvedExpenses.length,
@@ -478,72 +602,34 @@ function buildTripClosureRecord(
 }
 
 function validateCreatePayload(input: CreateTravelRequestPayload): string | null {
-  if (!isNonEmptyText(input.actorName)) {
-    return "Actor name is required.";
-  }
-
-  const textFields: Array<[string, unknown]> = [
-    ["employeeName", input.employeeName],
-    ["employeeEmail", input.employeeEmail],
-    ["department", input.department],
-    ["costCenter", input.costCenter],
-    ["origin", input.origin],
-    ["destination", input.destination],
-    ["departureDate", input.departureDate],
-    ["returnDate", input.returnDate],
-    ["purpose", input.purpose],
-    ["currency", input.currency],
+  if (!isNonEmptyText(input.actorName)) return "Actor name is required.";
+  const required: Array<
+    | "employeeName"
+    | "employeeEmail"
+    | "department"
+    | "costCenter"
+    | "origin"
+    | "destination"
+    | "departureDate"
+    | "returnDate"
+    | "purpose"
+    | "currency"
+  > = [
+    "employeeName", "employeeEmail", "department", "costCenter",
+    "origin", "destination", "departureDate", "returnDate", "purpose", "currency"
   ];
-
-  for (const [field, value] of textFields) {
-    if (!isNonEmptyText(value)) {
-      return `${field} is required.`;
-    }
+  for (const f of required) {
+    if (!isNonEmptyText(input[f])) return `${f} is required.`;
   }
-
-  if (!VALID_GRADES.has(input.employeeGrade)) {
-    return "employeeGrade is invalid.";
-  }
-  if (!VALID_TRIP_TYPES.has(input.tripType)) {
-    return "tripType is invalid.";
-  }
-  if (!VALID_CLASSES.has(input.travelClass)) {
-    return "travelClass is invalid.";
-  }
-  if (!Number.isFinite(input.estimatedCost) || input.estimatedCost <= 0) {
-    return "estimatedCost must be greater than zero.";
-  }
-
+  if (!VALID_GRADES.has(input.employeeGrade)) return "employeeGrade is invalid.";
+  if (!VALID_TRIP_TYPES.has(input.tripType)) return "tripType is invalid.";
+  if (!VALID_CLASSES.has(input.travelClass)) return "travelClass is invalid.";
+  if (!Number.isFinite(input.estimatedCost) || input.estimatedCost <= 0) return "estimatedCost must be > 0.";
   return null;
 }
 
-function isValidDateInput(value: string): boolean {
-  const timestamp = new Date(value).getTime();
-  return Number.isFinite(timestamp);
-}
-
-function isRoleAllowedForBooking(role: TravelActorRole): boolean {
-  return role === "travel_desk" || role === "admin";
-}
-
-function isRoleAllowedForExpenseSubmission(role: TravelActorRole): boolean {
-  return role === "employee" || role === "admin";
-}
-
-function isRoleAllowedForExpenseReview(role: TravelActorRole): boolean {
-  return role === "finance" || role === "admin";
-}
-
-function isRoleAllowedForFinanceSync(role: TravelActorRole): boolean {
-  return role === "finance" || role === "admin";
-}
-
-function shouldSimulateSyncFailure(totalAmount: number, attemptCount: number): boolean {
-  return attemptCount === 1 && totalAmount >= 10000;
-}
-
-function reevaluatePolicy(request: TravelRequest, now: Date): TravelRequest {
-  const activePolicy = getActiveTravelPolicy(now);
+async function reevaluatePolicy(request: TravelRequest, now: Date): Promise<TravelRequest> {
+  const activePolicy = await getActiveTravelPolicy(now);
   return {
     ...request,
     policyEvaluation: evaluateTravelPolicy({
@@ -559,143 +645,270 @@ function reevaluatePolicy(request: TravelRequest, now: Date): TravelRequest {
   };
 }
 
-export function listTravelRequests(): TravelRequest[] {
-  return ensureState()
-    .map((request) => cloneTravelRequest(request))
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+const AUTO_APPROVAL_STEPS_BY_STATUS: Record<string, TravelTransitionId> = {
+  submitted: "approve_manager",
+  // manager_approved: "approve_director", // Not supported in current workflow engine
+  // director_approved: "approve_executive", // Not supported in current workflow engine
+  // executive_approved: "approve_finance", // Not supported in current workflow engine
+};
+
+function isAutoApprovalEligibleRequest(request: TravelRequest, maxCost: number): boolean {
+  return request.estimatedCost <= maxCost && request.policyEvaluation?.level === "compliant";
 }
 
-export function createTravelRequest(
-  payload: CreateTravelRequestPayload,
-): CreateTravelRequestResult {
-  const validationError = validateCreatePayload(payload);
-  if (validationError) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: validationError,
-      },
-    };
-  }
+function isRoleAllowedForBooking(role: TravelActorRole): boolean {
+  return role === "admin" || role === "agent" || role === "travel_desk";
+}
 
-  const rows = ensureState();
+function isRoleAllowedForExpenseSubmission(role: TravelActorRole): boolean {
+  return role === "admin" || role === "agent" || role === "manager" || role === "employee";
+}
+
+function isRoleAllowedForExpenseReview(role: TravelActorRole): boolean {
+  return role === "admin" || role === "finance";
+}
+
+function isRoleAllowedForFinanceSync(role: TravelActorRole): boolean {
+  return role === "admin" || role === "finance";
+}
+
+function getTransitionBlockedMessage(reason?: TravelTransitionBlockReason): string {
+  switch (reason) {
+    case "role_not_allowed":
+      return "Actor role is not allowed for this transition.";
+    case "state_not_allowed":
+      return "Action not allowed in current state.";
+    case "policy_blocked":
+      return "Request is blocked by policy and cannot proceed.";
+    case "trip_not_completed":
+      return "Trip not ready for closure: return date has not passed.";
+    case "booking_not_recorded":
+      return "Trip not ready for closure: booking details must be recorded first.";
+    case "expenses_pending":
+      return "Trip not ready for closure: pending expense claims must be reviewed.";
+    case "finance_sync_incomplete":
+      return "Trip not ready for closure: approved expenses must be synchronized first.";
+    default:
+      return "Action not allowed in current state.";
+  }
+}
+
+async function updateTravelRequestRecord(
+  requestId: string,
+  setData: Record<string, unknown>,
+): Promise<TravelRequest> {
+  await runMongoCommand("travel_requests", "update", {
+    updates: [
+      {
+        q: { _id: requestId },
+        u: {
+          $set: {
+            ...setData,
+            updatedAt: toMongoDate(new Date()),
+          },
+          $inc: { version: 1 },
+        },
+        multi: false,
+      },
+    ],
+  });
+
+  const updatedRecord = await prisma.travelRequest.findUniqueOrThrow({ where: { id: requestId } });
+  return mapPrismaToTravelRequest(updatedRecord);
+}
+
+async function synchronizeTravelSettlement(
+  request: TravelRequest,
+  actorName: string,
+  at: string,
+): Promise<void> {
+  if (request.status !== "booked") {
+    return;
+  }
+  await upsertTravelSettlementTransaction({
+    request,
+    actorName,
+    at,
+  });
+}
+
+/**
+ * Public Data Access
+ */
+
+export async function listTravelRequests(): Promise<TravelRequest[]> {
+  await ensureTravelRequestDataCompatibility();
+  const records = await prisma.travelRequest.findMany({
+    orderBy: { updatedAt: "desc" },
+  });
+  return records.map(mapPrismaToTravelRequest);
+}
+
+export async function createTravelRequest(
+  payload: CreateTravelRequestPayload,
+): Promise<CreateTravelRequestResult> {
+  const validationError = validateCreatePayload(payload);
+  if (validationError) return { ok: false, error: { code: "validation_failed", message: validationError } };
+
   const now = new Date();
   const at = now.toISOString();
-  const activePolicy = getActiveTravelPolicy(now);
+  const id = await generateNextRequestId();
+
+  const baseEstimatedCost = roundMoney(payload.baseEstimatedCost ?? payload.estimatedCost);
+  const additionalServicesCost = roundMoney(payload.additionalServicesCost ?? 0);
+  const totalEstimatedCost = roundMoney(baseEstimatedCost + additionalServicesCost);
+
+  const activePolicy = await getActiveTravelPolicy(now);
   const policyEvaluation = evaluateTravelPolicy({
     employeeGrade: payload.employeeGrade,
     tripType: payload.tripType,
     departureDate: payload.departureDate,
     returnDate: payload.returnDate,
     travelClass: payload.travelClass,
-    estimatedCost: payload.estimatedCost,
+    estimatedCost: totalEstimatedCost,
     currency: payload.currency,
     now,
   }, activePolicy);
 
-  const created: TravelRequest = {
-    id: nextRequestId(rows),
-    employeeName: payload.employeeName.trim(),
-    employeeEmail: payload.employeeEmail.trim(),
-    employeeGrade: payload.employeeGrade,
-    department: payload.department.trim(),
-    costCenter: payload.costCenter.trim(),
-    tripType: payload.tripType,
-    origin: payload.origin.trim(),
-    destination: payload.destination.trim(),
-    departureDate: payload.departureDate,
-    returnDate: payload.returnDate,
-    purpose: payload.purpose.trim(),
-    travelClass: payload.travelClass,
-    estimatedCost: Math.round(payload.estimatedCost * 100) / 100,
-    currency: payload.currency.trim().toUpperCase(),
-    status: "draft",
-    approvalRoute: buildInitialApprovalRoute(),
-    policyEvaluation,
-    booking: null,
-    expenses: [],
-    financeSync: createInitialFinanceSyncState(),
-    closure: null,
-    createdAt: at,
-    updatedAt: at,
-    createdBy: payload.actorName.trim(),
-    updatedBy: payload.actorName.trim(),
-    version: 1,
-    auditTrail: [],
+  const initialStatus: TravelRequestStatus = "draft";
+  const initialApprovalRoute = buildInitialApprovalRoute();
+
+  const auditEvent: TravelAuditEvent = {
+    id: `${id}-AUD-001`,
+    at,
+    actorRole: payload.actorRole,
+    actorName: payload.actorName.trim(),
+    action: "create_request",
+    fromStatus: null,
+    toStatus: initialStatus,
+    note: "Request created as draft.",
   };
 
-  created.auditTrail.push(
-    createAuditEvent(
-      created,
-      "create_request",
-      at,
-      payload.actorRole,
-      payload.actorName.trim(),
-      "draft",
-      null,
-      "Request created as draft.",
-    ),
-  );
+  await runMongoCommand("travel_requests", "insert", {
+    documents: [
+      {
+        _id: id,
+        customerId:
+          typeof payload.customerId === "string" && payload.customerId.trim().length > 0
+            ? payload.customerId.trim()
+            : null,
+        employeeName: payload.employeeName.trim(),
+        employeeEmail: payload.employeeEmail.trim(),
+        employeeGrade: payload.employeeGrade,
+        department: payload.department.trim(),
+        costCenter: payload.costCenter.trim(),
+        tripType: payload.tripType,
+        origin: payload.origin.trim(),
+        destination: payload.destination.trim(),
+        departureDate: payload.departureDate,
+        returnDate: payload.returnDate,
+        purpose: payload.purpose.trim(),
+        travelClass: payload.travelClass,
+        baseEstimatedCost,
+        additionalServicesCost,
+        estimatedCost: totalEstimatedCost,
+        currency: payload.currency.trim().toUpperCase(),
+        status: initialStatus,
+        approvalRoute: initialApprovalRoute.map((step) => ({
+          stepId: step.id,
+          role: step.role,
+          status: step.status,
+          actorName: step.actorName ?? null,
+          at: step.actedAt ?? null,
+          note: step.note ?? null,
+        })),
+        policyEvaluation: {
+          policyId: policyEvaluation.policyVersion,
+          level: policyEvaluation.level,
+          evaluatedAt: policyEvaluation.evaluatedAt,
+          findings: policyEvaluation.findings,
+        },
+        financeSync: {
+          status: "not_synced",
+          attemptCount: 0,
+          ledgerLines: [],
+        },
+        createdBy: payload.actorName.trim(),
+        updatedBy: payload.actorName.trim(),
+        auditTrail: [auditEvent],
+        linkedServiceBookings: payload.linkedServiceBookingIds ?? [],
+        createdAt: toMongoDate(now),
+        updatedAt: toMongoDate(now),
+        version: 1,
+      },
+    ],
+  });
 
-  rows.unshift(created);
-  return {
-    ok: true,
-    result: cloneTravelRequest(created),
-  };
+  logger.info("Travel request created successfully", { requestId: id, actor: payload.actorName });
+
+  try {
+    const created = await prisma.travelRequest.findUniqueOrThrow({ where: { id } });
+    return { ok: true, result: mapPrismaToTravelRequest(created) };
+  } catch (error) {
+    logger.error("Travel request persisted but read-back failed; returning fallback payload", {
+      requestId: id,
+      actor: payload.actorName,
+      error,
+    });
+    return {
+      ok: true,
+      result: {
+        id,
+        customerId:
+          typeof payload.customerId === "string" && payload.customerId.trim().length > 0
+            ? payload.customerId.trim()
+            : undefined,
+        linkedServiceBookings: payload.linkedServiceBookingIds ?? [],
+        employeeName: payload.employeeName.trim(),
+        employeeEmail: payload.employeeEmail.trim(),
+        employeeGrade: payload.employeeGrade,
+        department: payload.department.trim(),
+        costCenter: payload.costCenter.trim(),
+        tripType: payload.tripType,
+        origin: payload.origin.trim(),
+        destination: payload.destination.trim(),
+        departureDate: payload.departureDate,
+        returnDate: payload.returnDate,
+        purpose: payload.purpose.trim(),
+        travelClass: payload.travelClass,
+        baseEstimatedCost,
+        additionalServicesCost,
+        estimatedCost: totalEstimatedCost,
+        currency: payload.currency.trim().toUpperCase(),
+        status: initialStatus,
+        approvalRoute: initialApprovalRoute,
+        policyEvaluation,
+        booking: null,
+        expenses: [],
+        financeSync: {
+          status: "not_synced",
+          attemptCount: 0,
+          ledgerLines: [],
+        },
+        closure: null,
+        createdAt: at,
+        updatedAt: at,
+        createdBy: payload.actorName.trim(),
+        updatedBy: payload.actorName.trim(),
+        version: 1,
+        auditTrail: [auditEvent],
+      },
+    };
+  }
 }
 
-export function applyTravelRequestTransition(
+export async function applyTravelRequestTransition(
   input: ApplyTravelTransitionInput,
-): ApplyTravelTransitionResult {
-  if (!isNonEmptyText(input.requestId)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "requestId is required.",
-      },
-    };
-  }
-  if (!isNonEmptyText(input.actorName)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "actorName is required.",
-      },
-    };
-  }
+): Promise<ApplyTravelTransitionResult> {
+  const record = await prisma.travelRequest.findUnique({ where: { id: input.requestId } });
+  if (!record) return { ok: false, error: { code: "request_not_found", message: "Not found." } };
 
-  const rows = ensureState();
-  const index = rows.findIndex((row) => row.id === input.requestId);
-  if (index < 0) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  const current = rows[index];
-  if (!current) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
+  const current = mapPrismaToTravelRequest(record);
   const now = new Date();
   const at = now.toISOString();
+
   let workingRequest = current;
-  if (input.transitionId === "submit_request") {
-    workingRequest = reevaluatePolicy(current, now);
-  }
+  if (input.transitionId === "submit_request") workingRequest = await reevaluatePolicy(current, now);
 
   const transition = getTravelTransitionOption(input.transitionId, {
     request: workingRequest,
@@ -703,58 +916,48 @@ export function applyTravelRequestTransition(
   });
 
   if (!transition.allowed) {
-    const messages: Record<NonNullable<typeof transition.blockedReason>, string> = {
-      role_not_allowed: "Current role is not allowed to execute this transition.",
-      state_not_allowed: "Transition is not valid for the current request status.",
-      policy_blocked: "Policy violations must be resolved before submitting this request.",
-      trip_not_completed: "Trip cannot be closed before the return date.",
-      booking_not_recorded: "Booking details must be recorded before closing.",
-      expenses_pending: "All pending expense claims must be reviewed before closing.",
-      finance_sync_incomplete: "Approved expenses must be synchronized before closing.",
-    };
     return {
       ok: false,
       error: {
         code: "transition_not_allowed",
-        message: messages[transition.blockedReason ?? "state_not_allowed"],
+        message: getTransitionBlockedMessage(transition.blockedReason),
       },
     };
   }
 
   if (transition.requiresNote && !isNonEmptyText(input.note)) {
-    return {
-      ok: false,
-      error: {
-        code: "note_required",
-        message: "A note is required for this action.",
-      },
-    };
+    return { ok: false, error: { code: "note_required", message: "Note required." } };
   }
 
-  let closure: TravelTripClosureRecord | null = workingRequest.closure;
+  let closure = workingRequest.closure;
   if (input.transitionId === "close_trip") {
     const readiness = buildTripClosureReadiness(workingRequest, now);
     if (!readiness.ready) {
-      const failedCheck = readiness.checks.find((check) => !check.passed);
+      const firstFailedCheck = readiness.checks.find((check) => !check.passed);
       return {
         ok: false,
         error: {
           code: "transition_not_allowed",
-          message: failedCheck?.message ?? "Trip cannot be closed yet.",
+          message: firstFailedCheck?.message ?? "Trip not ready for closure.",
         },
       };
     }
-    closure = buildTripClosureRecord(
-      workingRequest,
-      at,
-      input.actorName,
-      input.note,
-    );
+    closure = buildTripClosureRecord(workingRequest, at, input.actorName, input.note);
   }
 
   const nextStatus = transition.to;
-  const updated: TravelRequest = {
-    ...workingRequest,
+  const auditEvent = createAuditEvent(
+    workingRequest,
+    input.transitionId,
+    at,
+    input.actorRole,
+    input.actorName.trim(),
+    nextStatus,
+    workingRequest.status,
+    input.note?.trim(),
+  );
+
+  const updated = await updateTravelRequestRecord(input.requestId, {
     status: nextStatus,
     approvalRoute: applyTransitionToApprovalRoute({
       route: workingRequest.approvalRoute,
@@ -762,32 +965,26 @@ export function applyTravelRequestTransition(
       actorName: input.actorName.trim(),
       at,
       note: input.note?.trim(),
-    }),
-    closure,
-    updatedAt: at,
+    }).map((step) => ({
+      stepId: step.id,
+      role: step.role,
+      status: step.status,
+      actorName: step.actorName || null,
+      at: step.actedAt || null,
+      note: step.note || null,
+    })),
     updatedBy: input.actorName.trim(),
-    version: workingRequest.version + 1,
-    auditTrail: [
-      ...workingRequest.auditTrail,
-      createAuditEvent(
-        workingRequest,
-        input.transitionId,
-        at,
-        input.actorRole,
-        input.actorName.trim(),
-        nextStatus,
-        workingRequest.status,
-        input.note?.trim(),
-      ),
-    ],
-  };
-
-  rows[index] = updated;
+    closure,
+    auditTrail: [...workingRequest.auditTrail, auditEvent],
+  });
+  if (input.transitionId === "confirm_booking") {
+    await synchronizeTravelSettlement(updated, input.actorName.trim(), at);
+  }
 
   return {
     ok: true,
     result: {
-      request: cloneTravelRequest(updated),
+      request: updated,
       fromStatus: workingRequest.status,
       toStatus: nextStatus,
       transitionId: input.transitionId,
@@ -796,386 +993,155 @@ export function applyTravelRequestTransition(
   };
 }
 
-const AUTO_APPROVAL_STEPS_BY_STATUS: Partial<
-  Record<TravelRequestStatus, TravelTransitionId>
-> = {
-  submitted: "approve_manager",
-  manager_approved: "start_travel_review",
-  travel_review: "approve_finance",
-  finance_approved: "confirm_booking",
-};
-
-function isAutoApprovalEligibleRequest(request: TravelRequest, maxEstimatedCost: number): boolean {
-  if (request.policyEvaluation.level !== "compliant") {
-    return false;
-  }
-  if (request.estimatedCost > maxEstimatedCost) {
-    return false;
-  }
-  return request.status in AUTO_APPROVAL_STEPS_BY_STATUS;
-}
-
-export function autoApproveTravelRequests(
+export async function autoApproveTravelRequests(
   input: AutoApproveTravelRequestsInput,
-): AutoApproveTravelRequestsResult {
-  if (!isNonEmptyText(input.actorName)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "actorName is required.",
-      },
-    };
-  }
+): Promise<AutoApproveTravelRequestsResult> {
+  if (!isNonEmptyText(input.actorName)) return { ok: false, error: { code: "validation_failed", message: "actorName is required." } };
+  if (input.actorRole !== "admin") return { ok: false, error: { code: "role_not_allowed", message: "Only admin can execute auto-approval." } };
 
-  if (input.actorRole !== "admin") {
-    return {
-      ok: false,
-      error: {
-        code: "role_not_allowed",
-        message: "Only admin can execute auto-approval.",
-      },
-    };
-  }
+  const maxEstimatedCost = typeof input.maxEstimatedCost === "number" && input.maxEstimatedCost > 0 ? input.maxEstimatedCost : 5000;
+  const records = await prisma.travelRequest.findMany({
+    where: { status: { in: Object.keys(AUTO_APPROVAL_STEPS_BY_STATUS) } },
+  });
 
-  const rows = ensureState();
-  const maxEstimatedCost =
-    typeof input.maxEstimatedCost === "number" &&
-    Number.isFinite(input.maxEstimatedCost) &&
-    input.maxEstimatedCost > 0
-      ? input.maxEstimatedCost
-      : 5000;
-
-  let scanned = 0;
-  let updated = 0;
-  let skipped = 0;
+  let scanned = 0, updated = 0, skipped = 0;
   const touchedRequestIds: string[] = [];
 
-  for (const row of rows) {
-    if (!isAutoApprovalEligibleRequest(row, maxEstimatedCost)) {
-      continue;
-    }
-    scanned += 1;
+  for (const record of records) {
+    const row = mapPrismaToTravelRequest(record);
+    if (!isAutoApprovalEligibleRequest(row, maxEstimatedCost)) continue;
+    scanned++;
 
-    let advanced = false;
     let currentStatus = row.status;
-    for (let guard = 0; guard < 4; guard += 1) {
+    let advanced = false;
+    for (let i = 0; i < 4; i++) {
       const transitionId = AUTO_APPROVAL_STEPS_BY_STATUS[currentStatus];
-      if (!transitionId) {
-        break;
-      }
+      if (!transitionId) break;
 
-      const result = applyTravelRequestTransition({
+      const result = await applyTravelRequestTransition({
         requestId: row.id,
         transitionId,
         actorRole: "admin",
         actorName: input.actorName,
-        note: "Auto-approved by low-risk automation policy.",
+        note: "Auto-approved by policy.",
       });
 
-      if (!result.ok) {
-        break;
-      }
-
+      if (!result.ok) break;
       advanced = true;
       currentStatus = result.result.toStatus;
-      if (currentStatus === "booked") {
-        break;
-      }
+      if (currentStatus === "booked") break;
     }
 
     if (advanced) {
-      updated += 1;
+      updated++;
       touchedRequestIds.push(row.id);
     } else {
-      skipped += 1;
+      skipped++;
     }
   }
 
-  return {
-    ok: true,
-    result: {
-      scanned,
-      updated,
-      skipped,
-      touchedRequestIds,
-    },
-  };
+  return { ok: true, result: { scanned, updated, skipped, touchedRequestIds } };
 }
 
-export function upsertTravelBooking(input: UpsertTravelBookingInput): UpsertTravelBookingResult {
-  if (!isRoleAllowedForBooking(input.actorRole)) {
-    return {
-      ok: false,
-      error: {
-        code: "role_not_allowed",
-        message: "Only travel desk or admin can manage booking details.",
-      },
-    };
+interface UpsertTravelBookingInput {
+  requestId: string;
+  actorRole: TravelActorRole;
+  actorName: string;
+  vendor: string;
+  bookingReference: string;
+  ticketNumber?: string;
+  bookedAt?: string;
+  totalBookedCost: number;
+  currency: string;
+}
+
+export async function upsertTravelBooking(
+  input: UpsertTravelBookingInput,
+): Promise<UpsertTravelBookingResult> {
+  if (!isRoleAllowedForBooking(input.actorRole)) return { ok: false, error: { code: "role_not_allowed", message: "Forbidden." } };
+
+  const record = await prisma.travelRequest.findUnique({ where: { id: input.requestId } });
+  if (!record) return { ok: false, error: { code: "request_not_found", message: "Not found." } };
+
+  const current = mapPrismaToTravelRequest(record);
+  if (current.status !== "finance_approved" && current.status !== "booked") {
+    return { ok: false, error: { code: "invalid_state", message: "Cannot book in current state." } };
   }
 
-  const textFields: Array<[string, unknown]> = [
-    ["requestId", input.requestId],
-    ["actorName", input.actorName],
-    ["vendor", input.vendor],
-    ["bookingReference", input.bookingReference],
-    ["currency", input.currency],
-  ];
+  const at = new Date().toISOString();
+  const booking: TravelBookingRecord = {
+    vendor: input.vendor.trim(),
+    bookingReference: input.bookingReference.trim(),
+    ticketNumber: input.ticketNumber?.trim(),
+    bookedAt: input.bookedAt ?? at,
+    totalBookedCost: roundMoney(input.totalBookedCost),
+    currency: input.currency.trim().toUpperCase(),
+    bookedBy: input.actorName.trim(),
+  };
 
-  for (const [field, value] of textFields) {
-    if (!isNonEmptyText(value)) {
-      return {
-        ok: false,
-        error: {
-          code: "validation_failed",
-          message: `${field} is required.`,
-        },
-      };
-    }
-  }
-
-  if (!Number.isFinite(input.totalBookedCost) || input.totalBookedCost <= 0) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "totalBookedCost must be greater than zero.",
-      },
-    };
-  }
-
-  if (input.bookedAt && !isValidDateInput(input.bookedAt)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "bookedAt must be a valid date.",
-      },
-    };
-  }
-
-  const rows = ensureState();
-  const index = rows.findIndex((row) => row.id === input.requestId);
-  if (index < 0) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  const current = rows[index];
-  if (!current) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  if (current.status !== "booked") {
-    return {
-      ok: false,
-      error: {
-        code: "invalid_state",
-        message: "Booking details can only be recorded after request is booked.",
-      },
-    };
-  }
-
-  const at = input.bookedAt ? new Date(input.bookedAt).toISOString() : new Date().toISOString();
-  const updated: TravelRequest = {
-    ...current,
-    booking: {
-      vendor: input.vendor.trim(),
-      bookingReference: input.bookingReference.trim(),
-      ticketNumber: input.ticketNumber?.trim() || undefined,
-      bookedAt: at,
-      totalBookedCost: Math.round(input.totalBookedCost * 100) / 100,
-      currency: input.currency.trim().toUpperCase(),
-      bookedBy: input.actorName.trim(),
-    },
-    updatedAt: at,
+  const updated = await updateTravelRequestRecord(input.requestId, {
+    status: "booked",
+    booking,
     updatedBy: input.actorName.trim(),
-    version: current.version + 1,
     auditTrail: [
       ...current.auditTrail,
       createAuditEvent(
         current,
-        "record_booking",
+        "confirm_booking",
         at,
         input.actorRole,
-        input.actorName.trim(),
+        input.actorName,
+        "booked",
         current.status,
-        current.status,
-        `Booking reference ${input.bookingReference.trim()} updated.`,
+        `Booking: ${booking.bookingReference}`,
       ),
     ],
-  };
+  });
+  await synchronizeTravelSettlement(updated, input.actorName.trim(), at);
 
-  rows[index] = updated;
-
-  return {
-    ok: true,
-    result: {
-      request: cloneTravelRequest(updated),
-      at,
-    },
-  };
+  return { ok: true, result: { request: updated, at } };
 }
 
-export function submitTravelExpense(input: SubmitTravelExpenseInput): SubmitTravelExpenseResult {
-  if (!isRoleAllowedForExpenseSubmission(input.actorRole)) {
-    return {
-      ok: false,
-      error: {
-        code: "role_not_allowed",
-        message: "Only employee or admin can submit travel expenses.",
-      },
-    };
-  }
-
-  const textFields: Array<[string, unknown]> = [
-    ["requestId", input.requestId],
-    ["actorName", input.actorName],
-    ["currency", input.currency],
-    ["expenseDate", input.expenseDate],
-    ["merchant", input.merchant],
-    ["description", input.description],
-    ["receiptFileName", input.receiptFileName],
-    ["receiptMimeType", input.receiptMimeType],
-  ];
-
-  for (const [field, value] of textFields) {
-    if (!isNonEmptyText(value)) {
-      return {
-        ok: false,
-        error: {
-          code: "validation_failed",
-          message: `${field} is required.`,
-        },
-      };
-    }
-  }
-
+export async function submitTravelExpense(
+  input: SubmitTravelExpenseInput,
+): Promise<SubmitTravelExpenseResult> {
+  if (!isRoleAllowedForExpenseSubmission(input.actorRole)) return { ok: false, error: { code: "role_not_allowed", message: "Forbidden." } };
   if (!VALID_EXPENSE_CATEGORIES.has(input.category)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "category is invalid.",
-      },
-    };
+    return { ok: false, error: { code: "validation_failed", message: "category is invalid." } };
   }
 
-  if (!Number.isFinite(input.amount) || input.amount <= 0) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "amount must be greater than zero.",
-      },
-    };
-  }
+  const record = await prisma.travelRequest.findUnique({ where: { id: input.requestId } });
+  if (!record) return { ok: false, error: { code: "request_not_found", message: "Not found." } };
 
-  if (!isValidDateInput(input.expenseDate)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "expenseDate must be a valid date.",
-      },
-    };
-  }
-
-  if (!Number.isFinite(input.receiptSizeInBytes) || input.receiptSizeInBytes <= 0) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "receiptSizeInBytes must be greater than zero.",
-      },
-    };
-  }
-
-  if (input.receiptSizeInBytes > 5 * 1024 * 1024) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "receiptSizeInBytes exceeds the 5 MB limit.",
-      },
-    };
-  }
-
-  const rows = ensureState();
-  const index = rows.findIndex((row) => row.id === input.requestId);
-  if (index < 0) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  const current = rows[index];
-  if (!current) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
+  const current = mapPrismaToTravelRequest(record);
   if (current.status !== "booked") {
-    return {
-      ok: false,
-      error: {
-        code: "invalid_state",
-        message: "Expenses can only be submitted after booking confirmation.",
-      },
-    };
+    return { ok: false, error: { code: "invalid_state", message: "Cannot submit expenses now." } };
   }
 
   const at = new Date().toISOString();
+  const expenseId = nextExpenseId(current);
   const expense: TravelExpenseClaim = {
-    id: nextExpenseId(current),
+    id: expenseId,
     category: input.category,
-    amount: Math.round(input.amount * 100) / 100,
+    amount: roundMoney(input.amount),
     currency: input.currency.trim().toUpperCase(),
-    expenseDate: new Date(input.expenseDate).toISOString(),
+    expenseDate: input.expenseDate,
     merchant: input.merchant.trim(),
     description: input.description.trim(),
     status: "submitted",
     submittedBy: input.actorName.trim(),
     submittedAt: at,
     receipt: {
-      fileName: input.receiptFileName.trim(),
-      mimeType: input.receiptMimeType.trim().toLowerCase(),
-      sizeInBytes: Math.round(input.receiptSizeInBytes),
+      fileName: input.receiptFileName,
+      mimeType: input.receiptMimeType,
+      sizeInBytes: input.receiptSizeInBytes,
       uploadedAt: at,
     },
   };
 
-  const updated: TravelRequest = {
-    ...current,
+  const updated = await updateTravelRequestRecord(input.requestId, {
     expenses: [...current.expenses, expense],
-    financeSync: {
-      ...current.financeSync,
-      status: "not_synced",
-      lastError: undefined,
-    },
-    updatedAt: at,
     updatedBy: input.actorName.trim(),
-    version: current.version + 1,
     auditTrail: [
       ...current.auditTrail,
       createAuditEvent(
@@ -1183,457 +1149,169 @@ export function submitTravelExpense(input: SubmitTravelExpenseInput): SubmitTrav
         "submit_expense",
         at,
         input.actorRole,
-        input.actorName.trim(),
+        input.actorName,
         current.status,
         current.status,
-        `Expense ${expense.id} submitted.`,
+        `Expense: ${expenseId}`,
       ),
     ],
-  };
+  });
 
-  rows[index] = updated;
-
-  return {
-    ok: true,
-    result: {
-      request: cloneTravelRequest(updated),
-      expense: { ...expense, receipt: { ...expense.receipt } },
-      at,
-    },
-  };
+  return { ok: true, result: { request: updated, expense, at } };
 }
 
-export function reviewTravelExpense(input: ReviewTravelExpenseInput): ReviewTravelExpenseResult {
-  if (!isRoleAllowedForExpenseReview(input.actorRole)) {
-    return {
-      ok: false,
-      error: {
-        code: "role_not_allowed",
-        message: "Only finance or admin can review expense claims.",
-      },
-    };
-  }
+export async function reviewTravelExpense(
+  input: ReviewTravelExpenseInput,
+): Promise<ReviewTravelExpenseResult> {
+  if (!isRoleAllowedForExpenseReview(input.actorRole)) return { ok: false, error: { code: "role_not_allowed", message: "Forbidden." } };
 
-  if (!isNonEmptyText(input.requestId)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "requestId is required.",
-      },
-    };
-  }
+  const record = await prisma.travelRequest.findUnique({ where: { id: input.requestId } });
+  if (!record) return { ok: false, error: { code: "request_not_found", message: "Not found." } };
 
-  if (!isNonEmptyText(input.expenseId)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "expenseId is required.",
-      },
-    };
-  }
-
-  if (!isNonEmptyText(input.actorName)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "actorName is required.",
-      },
-    };
-  }
-
+  const current = mapPrismaToTravelRequest(record);
+  const expIdx = current.expenses.findIndex(e => e.id === input.expenseId);
+  if (expIdx < 0) return { ok: false, error: { code: "expense_not_found", message: "Expense not found." } };
+  if (current.expenses[expIdx].status !== "submitted") return { ok: false, error: { code: "expense_not_pending", message: "Already reviewed." } };
   if (input.decision === "reject" && !isNonEmptyText(input.note)) {
     return {
       ok: false,
-      error: {
-        code: "note_required",
-        message: "A note is required when rejecting an expense claim.",
-      },
-    };
-  }
-
-  const rows = ensureState();
-  const index = rows.findIndex((row) => row.id === input.requestId);
-  if (index < 0) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  const current = rows[index];
-  if (!current) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  const expenseIndex = current.expenses.findIndex((expense) => expense.id === input.expenseId);
-  if (expenseIndex < 0) {
-    return {
-      ok: false,
-      error: {
-        code: "expense_not_found",
-        message: "Expense claim was not found.",
-      },
-    };
-  }
-
-  const expense = current.expenses[expenseIndex];
-  if (!expense) {
-    return {
-      ok: false,
-      error: {
-        code: "expense_not_found",
-        message: "Expense claim was not found.",
-      },
-    };
-  }
-
-  if (expense.status !== "submitted") {
-    return {
-      ok: false,
-      error: {
-        code: "expense_not_pending",
-        message: "Only submitted expense claims can be reviewed.",
-      },
+      error: { code: "note_required", message: "A review note is required when rejecting an expense." },
     };
   }
 
   const at = new Date().toISOString();
-  const nextStatus: TravelExpenseStatus =
-    input.decision === "approve" ? "approved" : "rejected";
-
-  const reviewedExpense: TravelExpenseClaim = {
-    ...expense,
-    status: nextStatus,
-    reviewedBy: input.actorName.trim(),
+  const updatedExpenses = [...current.expenses];
+  updatedExpenses[expIdx] = {
+    ...updatedExpenses[expIdx],
+    status: input.decision === "approve" ? "approved" : "rejected",
     reviewedAt: at,
+    reviewedBy: input.actorName.trim(),
     reviewNote: input.note?.trim(),
-    ...(nextStatus === "approved"
-      ? {
-          syncedAt: undefined,
-          syncedBatchId: undefined,
-        }
-      : {}),
   };
 
-  const updatedExpenses = current.expenses.map((item, idx) =>
-    idx === expenseIndex ? reviewedExpense : item,
-  );
-
-  const updated: TravelRequest = {
-    ...current,
+  const updated = await updateTravelRequestRecord(input.requestId, {
     expenses: updatedExpenses,
-    financeSync:
-      nextStatus === "approved"
-        ? {
-            ...current.financeSync,
-            status: "not_synced",
-            lastError: undefined,
-          }
-        : current.financeSync,
-    updatedAt: at,
     updatedBy: input.actorName.trim(),
-    version: current.version + 1,
     auditTrail: [
       ...current.auditTrail,
       createAuditEvent(
         current,
-        input.decision === "approve" ? "approve_expense" : "reject_expense",
+        `review_expense_${input.decision}`,
         at,
         input.actorRole,
-        input.actorName.trim(),
+        input.actorName,
         current.status,
         current.status,
-        `${reviewedExpense.id}${input.note?.trim() ? `: ${input.note.trim()}` : ""}`,
+        `Expense: ${input.expenseId}`,
       ),
     ],
-  };
-
-  rows[index] = updated;
-
-  return {
-    ok: true,
-    result: {
-      request: cloneTravelRequest(updated),
-      expense: { ...reviewedExpense, receipt: { ...reviewedExpense.receipt } },
-      at,
-    },
-  };
-}
-
-export function syncTravelFinance(input: SyncTravelFinanceInput): SyncTravelFinanceResult {
-  if (!isRoleAllowedForFinanceSync(input.actorRole)) {
-    return {
-      ok: false,
-      error: {
-        code: "role_not_allowed",
-        message: "Only finance or admin can execute ERP synchronization.",
-      },
-    };
-  }
-
-  if (!isNonEmptyText(input.requestId)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "requestId is required.",
-      },
-    };
-  }
-
-  if (!isNonEmptyText(input.actorName)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "actorName is required.",
-      },
-    };
-  }
-
-  const rows = ensureState();
-  const index = rows.findIndex((row) => row.id === input.requestId);
-  if (index < 0) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  const current = rows[index];
-  if (!current) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  const approvedExpenses = current.expenses.filter((expense) => expense.status === "approved");
-  if (!approvedExpenses.length) {
-    return {
-      ok: false,
-      error: {
-        code: "no_expenses_to_sync",
-        message: "No approved expenses available for ERP synchronization.",
-      },
-    };
-  }
-
-  const unsyncedExpenses = approvedExpenses.filter((expense) => !expense.syncedAt);
-  if (!unsyncedExpenses.length) {
-    return {
-      ok: false,
-      error: {
-        code: "already_synced",
-        message: "All approved expenses are already synchronized.",
-      },
-    };
-  }
-
-  const at = new Date().toISOString();
-  const nextAttemptCount = current.financeSync.attemptCount + 1;
-  const totalAmount = unsyncedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-
-  if (shouldSimulateSyncFailure(totalAmount, nextAttemptCount)) {
-    const failed: TravelRequest = {
-      ...current,
-      financeSync: {
-        ...current.financeSync,
-        status: "failed",
-        attemptCount: nextAttemptCount,
-        lastAttemptAt: at,
-        lastError: "ERP endpoint timeout. Retry synchronization.",
-      },
-      updatedAt: at,
-      updatedBy: input.actorName.trim(),
-      version: current.version + 1,
-      auditTrail: [
-        ...current.auditTrail,
-        createAuditEvent(
-          current,
-          "finance_sync_failed",
-          at,
-          input.actorRole,
-          input.actorName.trim(),
-          current.status,
-          current.status,
-          "ERP endpoint timeout.",
-        ),
-      ],
-    };
-
-    rows[index] = failed;
-
-    return {
-      ok: false,
-      error: {
-        code: "sync_failed",
-        message: "ERP synchronization failed. Retry is required.",
-      },
-    };
-  }
-
-  const batchId = nextBatchId(current);
-  const ledgerLines: TravelLedgerLine[] = unsyncedExpenses.map((expense, indexInBatch) => ({
-    id: `${current.id}-GL-${String(current.financeSync.ledgerLines.length + indexInBatch + 1).padStart(4, "0")}`,
-    expenseId: expense.id,
-    glAccount: GL_ACCOUNT_BY_EXPENSE_CATEGORY[expense.category],
-    costCenter: current.costCenter,
-    amount: expense.amount,
-    currency: expense.currency,
-    memo: `${current.id} ${expense.category} ${expense.merchant}`,
-  }));
-
-  const updatedExpenses = current.expenses.map((expense) => {
-    if (!unsyncedExpenses.find((candidate) => candidate.id === expense.id)) {
-      return expense;
-    }
-    return {
-      ...expense,
-      syncedAt: at,
-      syncedBatchId: batchId,
-    };
   });
 
-  const success: TravelRequest = {
-    ...current,
+  return { ok: true, result: { request: updated, expense: updatedExpenses[expIdx], at } };
+}
+
+export async function syncTravelFinance(
+  input: SyncTravelFinanceInput,
+): Promise<SyncTravelFinanceResult> {
+  if (!isRoleAllowedForFinanceSync(input.actorRole)) return { ok: false, error: { code: "role_not_allowed", message: "Forbidden." } };
+
+  const record = await prisma.travelRequest.findUnique({ where: { id: input.requestId } });
+  if (!record) return { ok: false, error: { code: "request_not_found", message: "Not found." } };
+
+  const current = mapPrismaToTravelRequest(record);
+  const pendingSync = current.expenses.filter(e => e.status === "approved" && !e.syncedAt);
+  if (pendingSync.length === 0) return { ok: false, error: { code: "no_expenses_to_sync", message: "No approved unsynced expenses." } };
+
+  const at = new Date().toISOString();
+  const batchId = nextBatchId(current);
+  
+  const ledgerLines: TravelLedgerLine[] = pendingSync.map(exp => ({
+    id: `${batchId}-${exp.id}`,
+    expenseId: exp.id,
+    glAccount: GL_ACCOUNT_BY_EXPENSE_CATEGORY[exp.category] || "610900",
+    costCenter: current.costCenter,
+    amount: exp.amount,
+    currency: exp.currency,
+    memo: `Travel Expense: ${exp.id} (${exp.merchant})`,
+    postedAt: at
+  }));
+  const persistedLedgerLines = ledgerLines.map((line) => ({
+    id: line.id,
+    accountCode: line.glAccount,
+    description: line.memo,
+    debit: line.amount,
+    credit: 0,
+    currency: line.currency,
+  }));
+  const financeSyncFromRecord = record.financeSync as unknown;
+  const existingPersistedLedgerLines =
+    financeSyncFromRecord &&
+      typeof financeSyncFromRecord === "object" &&
+      "ledgerLines" in financeSyncFromRecord &&
+      Array.isArray(
+        (financeSyncFromRecord as { ledgerLines?: unknown }).ledgerLines,
+      )
+      ? (financeSyncFromRecord as { ledgerLines: typeof persistedLedgerLines }).ledgerLines
+      : [];
+
+  const updatedExpenses = current.expenses.map(exp => {
+    if (exp.status === "approved" && !exp.syncedAt) {
+      return { ...exp, syncedAt: at, financeBatchId: batchId };
+    }
+    return exp;
+  });
+
+  const financeSyncPayload = {
+    status: "succeeded",
+    lastAttemptAt: at,
+    attemptCount: current.financeSync.attemptCount + 1,
+    lastBatchId: batchId,
+    ledgerLines: [...existingPersistedLedgerLines, ...persistedLedgerLines],
+  };
+
+  const updated = await updateTravelRequestRecord(input.requestId, {
     expenses: updatedExpenses,
-    financeSync: {
-      ...current.financeSync,
-      status: "succeeded",
-      attemptCount: nextAttemptCount,
-      lastAttemptAt: at,
-      lastError: undefined,
-      lastBatchId: batchId,
-      ledgerLines: [...current.financeSync.ledgerLines, ...ledgerLines],
-    },
-    updatedAt: at,
+    financeSync: financeSyncPayload,
     updatedBy: input.actorName.trim(),
-    version: current.version + 1,
     auditTrail: [
       ...current.auditTrail,
       createAuditEvent(
         current,
-        "finance_sync_succeeded",
+        "finance_sync",
         at,
         input.actorRole,
-        input.actorName.trim(),
+        input.actorName,
         current.status,
         current.status,
-        `Batch ${batchId} synchronized (${ledgerLines.length} line(s)).`,
+        `Batch: ${batchId}`,
       ),
     ],
-  };
+  });
 
-  rows[index] = success;
-
-  return {
-    ok: true,
-    result: {
-      request: cloneTravelRequest(success),
-      batchId,
-      syncedExpenses: unsyncedExpenses.length,
-      ledgerLines: ledgerLines.map((line) => ({ ...line })),
-      at,
-    },
-  };
+  return { ok: true, result: { request: updated, batchId, syncedExpenses: pendingSync.length, ledgerLines, at } };
 }
 
-function escapeCsvCell(value: string): string {
-  if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
-    return `"${value.replaceAll("\"", "\"\"")}"`;
-  }
-  return value;
+export async function getTravelInsights(): Promise<TravelInsights> {
+  const requests = await listTravelRequests();
+  return buildTravelInsights(requests);
 }
 
-export function exportTravelAuditCsv(): string {
-  const headers = [
-    "request_id",
-    "event_id",
-    "at",
-    "actor_role",
-    "actor_name",
-    "action",
-    "from_status",
-    "to_status",
-    "note",
-  ];
-
-  const lines: string[] = [headers.join(",")];
-  const rows = listTravelRequests();
-
-  for (const request of rows) {
-    for (const event of request.auditTrail) {
-      const line = [
-        request.id,
-        event.id,
-        event.at,
-        event.actorRole,
-        event.actorName,
-        event.action,
-        event.fromStatus ?? "",
-        event.toStatus,
-        event.note ?? "",
-      ].map((cell) => escapeCsvCell(String(cell)));
-      lines.push(line.join(","));
-    }
-  }
-
-  return `${lines.join("\n")}\n`;
+export async function exportTravelAuditCsv(): Promise<string> {
+  const requests = await listTravelRequests();
+  const header = "Request ID,Action,Actor,Role,From Status,To Status,Date,Note\n";
+  const rows = requests.flatMap(req => 
+    req.auditTrail.map(evt => 
+      `"${req.id}","${evt.action}","${evt.actorName}","${evt.actorRole}","${evt.fromStatus ?? ""}","${evt.toStatus ?? ""}","${evt.at}","${evt.note ?? ""}"`
+    )
+  ).join("\n");
+  return header + rows;
 }
 
-export function getTravelInsights(): TravelInsights {
-  return buildTravelInsights(listTravelRequests());
-}
-
-export function getTravelTripClosureReadiness(
+export async function getTravelTripClosureReadiness(
   requestId: string,
-): GetTravelTripClosureReadinessResult {
-  if (!isNonEmptyText(requestId)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "requestId is required.",
-      },
-    };
-  }
-
-  const rows = ensureState();
-  const request = rows.find((row) => row.id === requestId);
-  if (!request) {
-    return {
-      ok: false,
-      error: {
-        code: "request_not_found",
-        message: "Travel request was not found.",
-      },
-    };
-  }
-
-  return {
-    ok: true,
-    result: {
-      requestId,
-      readiness: buildTripClosureReadiness(request),
-    },
-  };
+): Promise<GetTravelTripClosureReadinessResult> {
+  const record = await prisma.travelRequest.findUnique({ where: { id: requestId } });
+  if (!record) return { ok: false, error: { code: "request_not_found", message: "Not found." } };
+  const request = mapPrismaToTravelRequest(record);
+  return { ok: true, result: { requestId, readiness: buildTripClosureReadiness(request) } };
 }

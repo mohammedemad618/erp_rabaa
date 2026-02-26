@@ -54,7 +54,7 @@ export async function POST(
     return parsedBody.response;
   }
   const body = parsedBody.data;
-  const result = submitTravelExpense({
+  const result = await submitTravelExpense({
     requestId,
     actorRole,
     actorName: guard.user.name,

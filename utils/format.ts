@@ -127,12 +127,55 @@ export function formatCurrency(
   }
 }
 
-export function formatDate(value: string, locale: string): string {
+interface DateFormatOptions {
+  includeTime?: boolean;
+  fallback?: string;
+}
+
+function parseStrictIsoDate(value: string | null | undefined): Date | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+  const isIsoDateTime = /^\d{4}-\d{2}-\d{2}T/.test(trimmed);
+  if (!isDateOnly && !isIsoDateTime) {
+    return null;
+  }
+  const normalized = isDateOnly ? `${trimmed}T00:00:00Z` : trimmed;
+  const parsed = new Date(normalized);
+  if (!Number.isFinite(parsed.getTime())) {
+    return null;
+  }
+  return parsed;
+}
+
+export function formatDate(
+  value: string | null | undefined,
+  locale: string,
+  options: DateFormatOptions = {},
+): string {
+  const parsed = parseStrictIsoDate(value);
+  if (!parsed) {
+    return options.fallback ?? "-";
+  }
+
+  const includeTime = options.includeTime ?? true;
   return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+    ...(includeTime
+      ? {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "UTC",
+        }
+      : {
+          timeZone: "UTC",
+        }),
+  }).format(parsed);
 }

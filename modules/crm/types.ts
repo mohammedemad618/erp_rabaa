@@ -1,4 +1,6 @@
 import type { PaymentMethod, TransactionStatus } from "@/modules/transactions/types";
+import type { AnyServiceBooking } from "@/modules/services/types";
+import type { TravelRequest } from "@/modules/travel/types";
 
 export type CustomerRiskLevel = "low" | "medium" | "high";
 export type CustomerSegment = "starter" | "growth" | "strategic";
@@ -37,6 +39,7 @@ export interface CustomerProfile {
   id: string;
   name: string;
   phone: string;
+  email?: string;
   preferredAirline: string;
   branches: string[];
   segment: CustomerSegment;
@@ -50,6 +53,8 @@ export interface CustomerProfile {
   credit: CreditIndicator;
   aging: AgingBucket[];
   timeline: CustomerTimelineItem[];
+  serviceBookings: AnyServiceBooking[];
+  travelRequests: TravelRequest[];
 }
 
 export interface CrmDataset {
@@ -59,5 +64,7 @@ export interface CrmDataset {
     outstanding: number;
     sales: number;
     highRisk: number;
+    totalServiceRevenue: number;
+    totalTravelRequests: number;
   };
 }

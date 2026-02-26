@@ -3,7 +3,8 @@ export type TravelActorRole =
   | "manager"
   | "travel_desk"
   | "finance"
-  | "admin";
+  | "admin"
+  | "agent";
 
 export type EmployeeGrade = "staff" | "manager" | "director" | "executive";
 
@@ -172,6 +173,8 @@ export interface TravelTripClosureRecord {
 
 export interface TravelRequest {
   id: string;
+  customerId?: string;
+  linkedServiceBookings: string[];
   employeeName: string;
   employeeEmail: string;
   employeeGrade: EmployeeGrade;
@@ -184,6 +187,8 @@ export interface TravelRequest {
   returnDate: string;
   purpose: string;
   travelClass: TravelClass;
+  baseEstimatedCost?: number;
+  additionalServicesCost?: number;
   estimatedCost: number;
   currency: string;
   status: TravelRequestStatus;
@@ -209,6 +214,7 @@ export interface TravelActorContext {
 
 
 export interface CreateTravelRequestInput {
+  customerId?: string;
   employeeName: string;
   employeeEmail: string;
   employeeGrade: EmployeeGrade;
@@ -221,8 +227,12 @@ export interface CreateTravelRequestInput {
   returnDate: string;
   purpose: string;
   travelClass: TravelClass;
+  baseEstimatedCost?: number;
+  additionalServicesCost?: number;
   estimatedCost: number;
   currency: string;
+  linkedServiceBookingIds?: string[];
+  serviceCostOverrides?: Record<string, number>;
 }
 
 export interface BookingFormState {

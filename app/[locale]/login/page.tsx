@@ -4,36 +4,54 @@ import { Plane, Loader2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
 
-const DEMO_ACCOUNTS = [
-  { email: "admin@enterprise.local", password: "Admin@12345", role: "admin" },
-  { email: "finance@enterprise.local", password: "Finance@12345", role: "finance_manager" },
-  { email: "agent@enterprise.local", password: "Agent@12345", role: "agent" },
-  { email: "auditor@enterprise.local", password: "Auditor@12345", role: "auditor" },
-  { email: "manager@enterprise.local", password: "Manager@12345", role: "manager" },
-  { email: "traveldesk@enterprise.local", password: "TravelDesk@12345", role: "travel_desk" },
-] as const;
+interface LoginErrorPayload {
+  code?: string;
+}
+
+interface DemoAccount {
+  email: string;
+  password: string;
+  roleAr: string;
+  roleEn: string;
+}
+
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    email: "admin@enterprise.local",
+    password: "Admin@12345",
+    roleAr: "Admin",
+    roleEn: "Admin",
+  },
+  {
+    email: "finance@enterprise.local",
+    password: "Finance@12345",
+    roleAr: "Finance Manager",
+    roleEn: "Finance Manager",
+  },
+  {
+    email: "agent@enterprise.local",
+    password: "Agent@12345",
+    roleAr: "Agent",
+    roleEn: "Agent",
+  },
+];
+
+const QUICK_LOGIN_ENABLED = process.env.NODE_ENV !== "production";
 
 export default function LoginPage() {
   const locale = useLocale();
+  const isArabic = locale === "ar";
   const tLogin = useTranslations("auth.login");
-  const tRoles = useTranslations("roles");
 
-  const [email, setEmail] = useState<string>(DEMO_ACCOUNTS[0].email);
-  const [password, setPassword] = useState<string>(DEMO_ACCOUNTS[0].password);
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
-
-  const roleLabelByKey: Record<string, string> = {
-    admin: tRoles("admin"),
-    finance_manager: tRoles("finance_manager"),
-    agent: tRoles("agent"),
-    auditor: tRoles("auditor"),
-    manager: tRoles("manager"),
-    travel_desk: tRoles("travel_desk"),
-  };
 
   useEffect(() => {
     let active = true;
@@ -63,8 +81,7 @@ export default function LoginPage() {
     };
   }, [locale]);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
+  async function attemptLogin(nextEmail: string, nextPassword: string): Promise<void> {
     setError("");
     try {
       setIsSubmitting(true);
@@ -74,13 +91,23 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          password,
+          email: nextEmail,
+          password: nextPassword,
         }),
       });
 
       if (!response.ok) {
-        setError(tLogin("failed"));
+        const payload = (await response.json().catch(() => null)) as LoginErrorPayload | null;
+        if (payload?.code === "validation_failed") {
+          setError(
+            isArabic
+              ? "Please enter both email and password."
+              : "Please enter both email and password.",
+          );
+        } else {
+          setError(tLogin("failed"));
+        }
+        emailRef.current?.focus();
         setShake(true);
         setTimeout(() => setShake(false), 600);
         return;
@@ -94,6 +121,7 @@ export default function LoginPage() {
       window.location.href = `/${locale}`;
     } catch {
       setError(tLogin("failed"));
+      emailRef.current?.focus();
       setShake(true);
       setTimeout(() => setShake(false), 600);
     } finally {
@@ -101,10 +129,22 @@ export default function LoginPage() {
     }
   }
 
-  function selectAccount(account: (typeof DEMO_ACCOUNTS)[number]): void {
-    setEmail(account.email);
-    setPassword(account.password);
-    setError("");
+  async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    await attemptLogin(email, password);
+  }
+
+  async function quickLoginAsAdmin(): Promise<void> {
+    if (!QUICK_LOGIN_ENABLED || isSubmitting) {
+      return;
+    }
+    const admin = DEMO_ACCOUNTS[0];
+    if (!admin) {
+      return;
+    }
+    setEmail(admin.email);
+    setPassword(admin.password);
+    await attemptLogin(admin.email, admin.password);
   }
 
   return (
@@ -128,29 +168,39 @@ export default function LoginPage() {
 
       <div className="p-6">
         <form onSubmit={submit} className="space-y-4">
-          <label className="block text-xs font-medium text-finance">
-            {tLogin("email")}
-            <input
+          <FormField label={tLogin("email")} required>
+            <Input
               ref={emailRef}
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-sm text-foreground shadow-sm transition focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10"
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (error) {
+                  setError("");
+                }
+              }}
+              size="lg"
               required
               autoComplete="email"
+              className="rounded-xl"
             />
-          </label>
-          <label className="block text-xs font-medium text-finance">
-            {tLogin("password")}
-            <input
+          </FormField>
+          <FormField label={tLogin("password")} required>
+            <Input
               type="password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 text-sm text-foreground shadow-sm transition focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10"
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (error) {
+                  setError("");
+                }
+              }}
+              size="lg"
               required
               autoComplete="current-password"
+              className="rounded-xl"
             />
-          </label>
+          </FormField>
 
           {error ? (
             <div className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-600">
@@ -159,64 +209,67 @@ export default function LoginPage() {
             </div>
           ) : null}
 
-          <Button type="submit" className="w-full h-11 text-sm" disabled={isSubmitting}>
+          <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                {locale === "ar" ? "جاري الدخول..." : "Signing in..."}
+                {isArabic ? "Signing in..." : "Signing in..."}
               </>
             ) : (
               tLogin("submit")
             )}
           </Button>
-        </form>
 
-        <div className="mt-6 border-t border-border pt-5">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tLogin("demoTitle")}
-          </h3>
-          <div className="mt-3 grid gap-2">
-            {DEMO_ACCOUNTS.map((account) => (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => selectAccount(account)}
-                className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-start transition-all hover:border-primary/40 hover:bg-blue-50/40 hover:shadow-sm ${
-                  email === account.email
-                    ? "border-primary/50 bg-blue-50/60 shadow-sm"
-                    : "border-border bg-white"
-                }`}
-              >
-                <div>
-                  <p className="text-xs font-medium text-finance">
-                    <bdi>{account.email}</bdi>
+          {QUICK_LOGIN_ENABLED ? (
+            <div className="space-y-2 rounded-xl border border-dashed border-border bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-finance">{tLogin("demoTitle")}</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void quickLoginAsAdmin()}
+                  disabled={isSubmitting}
+                >
+                  {isArabic ? "Quick Login as Admin" : "Quick Login as Admin"}
+                </Button>
+              </div>
+              <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <p key={account.email} className="rounded-md bg-white px-2 py-1.5">
+                    <span className="font-medium text-finance">
+                      {isArabic ? account.roleAr : account.roleEn}
+                    </span>
+                    {" - "}
+                    <span className="font-mono">{account.email}</span>
+                    {" / "}
+                    <span className="font-mono">{account.password}</span>
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    <bdi>{account.password}</bdi>
-                  </p>
-                </div>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  account.role === "admin"
-                    ? "bg-blue-100 text-blue-700"
-                    : account.role === "finance_manager"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-100 text-slate-600"
-                }`}>
-                  {roleLabelByKey[account.role] ?? account.role}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </form>
       </div>
 
       <style jsx>{`
         @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          20% { transform: translateX(-8px); }
-          40% { transform: translateX(8px); }
-          60% { transform: translateX(-4px); }
-          80% { transform: translateX(4px); }
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          20% {
+            transform: translateX(-8px);
+          }
+          40% {
+            transform: translateX(8px);
+          }
+          60% {
+            transform: translateX(-4px);
+          }
+          80% {
+            transform: translateX(4px);
+          }
         }
       `}</style>
     </section>

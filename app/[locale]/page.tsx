@@ -1,4 +1,4 @@
-import { Link } from "@/i18n/navigation";
+﻿import { Link } from "@/i18n/navigation";
 import {
   ErpKpiGrid,
   ErpPageHeader,
@@ -11,11 +11,14 @@ import {
 } from "@/modules/settings/settings-config";
 import { requirePermission } from "@/services/auth/server-guards";
 import { transactionService } from "@/services/transaction-service";
-import { getServiceStats } from "@/modules/services/services-store";
+import { getServiceStats, getTotalRevenue, listBookings } from "@/modules/services/services-store";
+import { listCustomers } from "@/modules/customers/customer-store";
 import { SERVICE_CATEGORIES } from "@/modules/services/types";
+import { travelRequestService } from "@/services/travel-request-service";
 import { formatCurrency } from "@/utils/format";
 import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
+import { buildCrmDataset } from "@/modules/crm/services/crm-dataset";
 import { DashboardWidgets } from "./dashboard-widgets";
 
 export const dynamic = "force-dynamic";
@@ -38,16 +41,33 @@ function decodeCookieValue(value?: string): string | null {
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { locale: routeLocale } = await params;
   await requirePermission(routeLocale, "dashboard.view", `/${routeLocale}`);
-  const [tDashboard, transactions, locale, cookieStore] = await Promise.all([
+  const [tDashboard, transactions, travelRequests, customers, serviceBookings, locale, cookieStore] = await Promise.all([
     getTranslations("dashboard"),
     transactionService.list(),
+    travelRequestService.list(),
+    listCustomers(),
+    Promise.resolve(listBookings()),
     getLocale(),
     cookies(),
   ]);
+  const customerCount = buildCrmDataset(
+    transactions,
+    serviceBookings,
+    travelRequests,
+    customers,
+  ).totals.customers;
+  const serviceRevenue = getTotalRevenue();
+  const activeTravelCount = travelRequests.filter(
+    (r) => !["closed", "rejected", "cancelled"].includes(r.status),
+  ).length;
   const displayCurrency = cookieStore.get(DISPLAY_CURRENCY_COOKIE_KEY)?.value;
   const exchangeRates = deserializeExchangeRates(
     decodeCookieValue(cookieStore.get(EXCHANGE_RATES_COOKIE_KEY)?.value),
   );
+  const currencyFormatOptions = {
+    displayCurrency,
+    exchangeRates: exchangeRates ?? undefined,
+  };
 
   const salesToday = transactions
     .slice(0, 180)
@@ -71,10 +91,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const kpiCards = [
     {
       label: tDashboard("kpi.salesToday"),
-      value: formatCurrency(salesToday, locale, "SAR", {
-        displayCurrency,
-        exchangeRates: exchangeRates ?? undefined,
-      }),
+      value: formatCurrency(salesToday, locale, "SAR", currencyFormatOptions),
       accent: "bg-blue-50 border-blue-200",
       trend: "+12.3%",
       trendUp: true,
@@ -152,7 +169,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         description={tDashboard("description")}
         actions={
           <Link
-            href="/transactions"
+            href="/operations"
             className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-white shadow-md shadow-primary/20 transition hover:bg-blue-700 hover:shadow-lg"
           >
             {tDashboard("cta")}
@@ -160,12 +177,13 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         }
       />
 
-      <div className="col-span-12 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="col-span-12 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {[
-          { href: "/services/hotels", label: locale === "ar" ? "حجز فندق جديد" : "New Hotel Booking", icon: "🏨" },
-          { href: "/services/visa", label: locale === "ar" ? "طلب تأشيرة جديد" : "New Visa Request", icon: "📋" },
-          { href: "/services/tours", label: locale === "ar" ? "برنامج سياحي جديد" : "New Tour Package", icon: "🗺️" },
-          { href: "/travel", label: locale === "ar" ? "طلب سفر جديد" : "New Travel Request", icon: "✈️" },
+          { href: "/crm", label: locale === "ar" ? "\u0627\u0644\u0639\u0645\u0644\u0627\u0621" : "Customers", icon: "CRM", stat: `${customerCount}` },
+          { href: "/services", label: locale === "ar" ? "\u0645\u0631\u0643\u0632 \u0627\u0644\u062e\u062f\u0645\u0627\u062a" : "Services Hub", icon: "SV", stat: formatCurrency(serviceRevenue, locale, "SAR", currencyFormatOptions) },
+          { href: "/operations", label: locale === "ar" ? "\u0645\u0631\u0643\u0632 \u0627\u0644\u0639\u0645\u0644\u064a\u0627\u062a" : "Operations Hub", icon: "OP", stat: `${activeTravelCount} ${locale === "ar" ? "\u0646\u0634\u0637" : "active"}` },
+          { href: "/services/hotels", label: locale === "ar" ? "\u062d\u062c\u0632 \u0641\u0646\u062f\u0642" : "Hotel Booking", icon: "HT" },
+          { href: "/services/visa", label: locale === "ar" ? "\u0637\u0644\u0628 \u062a\u0623\u0634\u064a\u0631\u0629" : "Visa Request", icon: "VS" },
         ].map((action) => (
           <Link
             key={action.href}
@@ -173,7 +191,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             className="flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-3 text-sm font-medium text-finance shadow-sm transition-all hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5"
           >
             <span className="text-lg">{action.icon}</span>
-            {action.label}
+            <div className="min-w-0 flex-1">
+              <p className="truncate">{action.label}</p>
+              {"stat" in action && action.stat ? (
+                <p className="text-[10px] text-muted-foreground">{action.stat}</p>
+              ) : null}
+            </div>
           </Link>
         ))}
       </div>
@@ -199,7 +222,10 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         trendData={trendData}
         recentTransactions={recentTransactions}
         servicesRevenue={servicesRevenue}
+        currencyOptions={currencyFormatOptions}
       />
     </ErpPageLayout>
   );
 }
+
+

@@ -22,6 +22,8 @@ interface SeedTransition {
 
 interface RequestSeed extends Omit<CreateTravelRequestInput, "departureDate" | "returnDate"> {
   id: string;
+  customerId?: string;
+  linkedServiceBookings?: string[];
   createdOffsetDays: number;
   departureOffsetDays: number;
   returnOffsetDays: number;
@@ -106,6 +108,8 @@ function buildRequestFromSeed(seed: RequestSeed): TravelRequest {
 
   let request: TravelRequest = {
     id: seed.id,
+    customerId: seed.customerId,
+    linkedServiceBookings: seed.linkedServiceBookings ?? [],
     employeeName: seed.employeeName,
     employeeEmail: seed.employeeEmail,
     employeeGrade: seed.employeeGrade,
@@ -390,6 +394,8 @@ const SEEDS: RequestSeed[] = [
   },
   {
     id: "TRV-1004",
+    customerId: "CUST-OHA003",
+    linkedServiceBookings: ["HTL-003", "VIS-001"],
     employeeName: "Khalid Hassan",
     employeeEmail: "khalid.hassan@enterprise.local",
     employeeGrade: "director",
@@ -445,6 +451,8 @@ const SEEDS: RequestSeed[] = [
   },
   {
     id: "TRV-1006",
+    customerId: "CUST-KAR001",
+    linkedServiceBookings: ["HTL-001", "CAR-001", "INS-001", "TRF-001"],
     employeeName: "Rami Alsaeed",
     employeeEmail: "rami.alsaeed@enterprise.local",
     employeeGrade: "director",

@@ -4,13 +4,20 @@ import type { TravelActorRole } from "../modules/travel/types";
 import {
   applyTravelRequestTransition,
   createTravelRequest,
-  getTravelInsights,
   getTravelTripClosureReadiness,
+  listTravelRequests,
   reviewTravelExpense,
   submitTravelExpense,
   syncTravelFinance,
   upsertTravelBooking,
 } from "../services/travel-request-store";
+import { listTransactions } from "../services/transaction-store";
+import { buildAccountingDataset } from "../modules/accounting/services/accounting-dataset";
+import { buildTravelInsights } from "../modules/travel/services/travel-insights";
+import { buildTreasuryDataset } from "../modules/treasury/services/treasury-dataset";
+import { getServiceCategoryBookingCounts } from "../modules/services/service-category-usage";
+import { runMongoCommand } from "../lib/mongo-helper";
+import { calculateNormalizedTotal } from "../utils/pricing";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -48,7 +55,7 @@ function addDays(isoTimestamp: string, days: number): string {
 }
 
 function assertCreateSuccess(
-  result: ReturnType<typeof createTravelRequest>,
+  result: Awaited<ReturnType<typeof createTravelRequest>>,
 ): { requestId: string; employeeName: string; departureDate: string; returnDate: string } {
   assert.equal(result.ok, true, result.ok ? undefined : result.error.message);
   if (!result.ok) {
@@ -62,7 +69,7 @@ function assertCreateSuccess(
   };
 }
 
-function applyTransitionOrThrow(
+async function applyTransitionOrThrow(
   requestId: string,
   transitionId:
     | "submit_request"
@@ -72,8 +79,8 @@ function applyTransitionOrThrow(
     | "confirm_booking",
   actorRole: TravelActorRole,
   actorName: string,
-): void {
-  const result = applyTravelRequestTransition({
+): Promise<void> {
+  const result = await applyTravelRequestTransition({
     requestId,
     transitionId,
     actorRole,
@@ -85,13 +92,13 @@ function applyTransitionOrThrow(
   }
 }
 
-function createAndBookRequest(nowIso: string): {
+async function createAndBookRequest(nowIso: string): Promise<{
   requestId: string;
   employeeName: string;
   departureDate: string;
   returnDate: string;
-} {
-  const created = createTravelRequest({
+}> {
+  const created = await createTravelRequest({
     employeeName: `Integration Employee ${Math.random().toString(36).slice(2, 8)}`,
     employeeEmail: "integration.employee@enterprise.local",
     employeeGrade: "manager",
@@ -111,13 +118,13 @@ function createAndBookRequest(nowIso: string): {
   });
 
   const seed = assertCreateSuccess(created);
-  applyTransitionOrThrow(seed.requestId, "submit_request", "employee", seed.employeeName);
-  applyTransitionOrThrow(seed.requestId, "approve_manager", "manager", "Integration Manager");
-  applyTransitionOrThrow(seed.requestId, "start_travel_review", "travel_desk", "Travel Desk User");
-  applyTransitionOrThrow(seed.requestId, "approve_finance", "finance", "Finance User");
-  applyTransitionOrThrow(seed.requestId, "confirm_booking", "travel_desk", "Travel Desk User");
+  await applyTransitionOrThrow(seed.requestId, "submit_request", "employee", seed.employeeName);
+  await applyTransitionOrThrow(seed.requestId, "approve_manager", "manager", "Integration Manager");
+  await applyTransitionOrThrow(seed.requestId, "start_travel_review", "travel_desk", "Travel Desk User");
+  await applyTransitionOrThrow(seed.requestId, "approve_finance", "finance", "Finance User");
+  await applyTransitionOrThrow(seed.requestId, "confirm_booking", "travel_desk", "Travel Desk User");
 
-  const bookingResult = upsertTravelBooking({
+  const bookingResult = await upsertTravelBooking({
     requestId: seed.requestId,
     actorRole: "travel_desk",
     actorName: "Travel Desk User",
@@ -154,6 +161,66 @@ test("closure readiness stays blocked when trip return date has not passed", asy
   );
   assert.ok(tripCheck);
   assert.equal(tripCheck.passed, false);
+});
+
+test("listTravelRequests tolerates legacy null policyEvaluation records", async () => {
+  const nowIso = "2030-06-01T09:00:00.000Z";
+  const created = await withMockedNow(nowIso, () =>
+    createTravelRequest({
+      employeeName: `Integration Employee ${Math.random().toString(36).slice(2, 8)}`,
+      employeeEmail: "integration.employee@enterprise.local",
+      employeeGrade: "staff",
+      department: "Operations",
+      costCenter: "CC-OPS-LEGACY",
+      tripType: "domestic",
+      origin: "Riyadh",
+      destination: "Dammam",
+      departureDate: addDays(nowIso, 3),
+      returnDate: addDays(nowIso, 5),
+      purpose: "Legacy policy-evaluation compatibility test",
+      travelClass: "economy",
+      estimatedCost: 900,
+      currency: "SAR",
+      actorRole: "employee",
+      actorName: "Integration Employee",
+    }),
+  );
+  const seed = assertCreateSuccess(created);
+
+  await runMongoCommand("travel_requests", "update", {
+    updates: [
+      {
+        q: { _id: seed.requestId },
+        u: { $set: { policyEvaluation: null } },
+        multi: false,
+      },
+    ],
+  });
+
+  const requests = await listTravelRequests();
+  const target = requests.find((request) => request.id === seed.requestId);
+  assert.ok(target, "Expected request to remain readable even when policyEvaluation is null.");
+  if (!target) {
+    return;
+  }
+  assert.equal(typeof target.policyEvaluation.policyVersion, "string");
+  assert.ok(target.policyEvaluation.findings.length > 0);
+});
+
+test("pricing engine normalizes multi-currency services into target currency", () => {
+  const result = calculateNormalizedTotal(
+    [
+      { cost: 200, currency: "SAR" },
+      { cost: 50, currency: "USD" },
+      { cost: 10, currency: "UNKNOWN" },
+    ],
+    { targetCurrency: "SAR" },
+  );
+
+  assert.equal(result.targetCurrency, "SAR");
+  assert.equal(result.total, 387.5);
+  assert.equal(result.convertedCount, 2);
+  assert.equal(result.skippedCount, 1);
 });
 
 test("close_trip is rejected when pending expenses still exist", async () => {
@@ -398,10 +465,136 @@ test("expense rejection requires a note for auditability", async () => {
   assert.equal(rejectWithoutNote.error.code, "note_required");
 });
 
-test("insights generation stays within acceptable performance envelope", () => {
+test("booked travel request creates a pending financial transaction", async () => {
+  const startNow = "2035-06-01T09:00:00.000Z";
+  const scenario = await withMockedNow(startNow, () => createAndBookRequest(startNow));
+
+  const transactions = await listTransactions();
+  const posting = transactions.find((transaction) => transaction.id === `TRVTX-${scenario.requestId}`);
+
+  assert.ok(posting, "Expected booked travel request to create a mirrored finance transaction.");
+  if (!posting) {
+    return;
+  }
+  assert.equal(posting.status, "pending_payment");
+  assert.equal(posting.paymentMethod, "bank");
+  assert.ok(posting.totalAmount > 0);
+});
+
+test("booked travel request is reflected in accounting and treasury datasets", async () => {
+  const startNow = "2035-07-01T09:00:00.000Z";
+  const scenario = await withMockedNow(startNow, () => createAndBookRequest(startNow));
+  const transactionId = `TRVTX-${scenario.requestId}`;
+
+  const transactions = await listTransactions();
+  const accountingDataset = buildAccountingDataset(transactions);
+  const treasuryDataset = buildTreasuryDataset(transactions);
+
+  assert.ok(
+    accountingDataset.journalRows.some((row) => row.reference === transactionId),
+    "Expected booked travel request posting to appear in accounting journal rows.",
+  );
+  assert.ok(
+    treasuryDataset.systemBankRows.some((row) => row.reference === transactionId),
+    "Expected booked travel request posting to appear in treasury system bank rows.",
+  );
+});
+
+test("confirm_booking creates finance posting even before booking details are saved", async () => {
+  const startNow = "2035-08-01T09:00:00.000Z";
+  const created = await withMockedNow(startNow, () =>
+    createTravelRequest({
+      employeeName: `Integration Employee ${Math.random().toString(36).slice(2, 8)}`,
+      employeeEmail: "integration.employee@enterprise.local",
+      employeeGrade: "manager",
+      department: "Operations",
+      costCenter: "CC-OPS-010",
+      tripType: "domestic",
+      origin: "Riyadh",
+      destination: "Jeddah",
+      departureDate: addDays(startNow, 4),
+      returnDate: addDays(startNow, 7),
+      purpose: "Booked-state finance bridge validation",
+      travelClass: "economy",
+      estimatedCost: 1800,
+      currency: "SAR",
+      actorRole: "employee",
+      actorName: "Integration Employee",
+    }),
+  );
+
+  const seed = assertCreateSuccess(created);
+  await applyTransitionOrThrow(seed.requestId, "submit_request", "employee", seed.employeeName);
+  await applyTransitionOrThrow(seed.requestId, "approve_manager", "manager", "Integration Manager");
+  await applyTransitionOrThrow(seed.requestId, "start_travel_review", "travel_desk", "Travel Desk User");
+  await applyTransitionOrThrow(seed.requestId, "approve_finance", "finance", "Finance User");
+  await applyTransitionOrThrow(seed.requestId, "confirm_booking", "travel_desk", "Travel Desk User");
+
+  const transactions = await listTransactions();
+  const posting = transactions.find((transaction) => transaction.id === `TRVTX-${seed.requestId}`);
+
+  assert.ok(
+    posting,
+    "Expected confirm_booking transition to create finance posting without explicit booking details.",
+  );
+  if (!posting) {
+    return;
+  }
+  assert.equal(posting.status, "pending_payment");
+  assert.equal(posting.paymentMethod, "bank");
+  assert.equal(posting.totalAmount, 1800);
+});
+
+test("service category counters include linked service bookings for booked requests", async () => {
+  const startNow = "2035-09-01T09:00:00.000Z";
+  const before = await getServiceCategoryBookingCounts();
+
+  const created = await withMockedNow(startNow, () =>
+    createTravelRequest({
+      employeeName: `Integration Employee ${Math.random().toString(36).slice(2, 8)}`,
+      employeeEmail: "integration.employee@enterprise.local",
+      employeeGrade: "manager",
+      department: "Operations",
+      costCenter: "CC-OPS-SVC",
+      tripType: "domestic",
+      origin: "Riyadh",
+      destination: "Abha",
+      departureDate: addDays(startNow, 3),
+      returnDate: addDays(startNow, 6),
+      purpose: "Service category usage integration test",
+      travelClass: "economy",
+      estimatedCost: 2100,
+      currency: "SAR",
+      linkedServiceBookingIds: ["HTL-COUNTER-001", "VIS-COUNTER-001"],
+      actorRole: "employee",
+      actorName: "Integration Employee",
+    }),
+  );
+
+  const seed = assertCreateSuccess(created);
+  await applyTransitionOrThrow(seed.requestId, "submit_request", "employee", seed.employeeName);
+  await applyTransitionOrThrow(seed.requestId, "approve_manager", "manager", "Integration Manager");
+  await applyTransitionOrThrow(seed.requestId, "start_travel_review", "travel_desk", "Travel Desk User");
+  await applyTransitionOrThrow(seed.requestId, "approve_finance", "finance", "Finance User");
+  await applyTransitionOrThrow(seed.requestId, "confirm_booking", "travel_desk", "Travel Desk User");
+
+  const after = await getServiceCategoryBookingCounts();
+  assert.ok(
+    (after.hotel ?? 0) >= (before.hotel ?? 0) + 1,
+    "Expected hotel category booking counter to increase for booked linked services.",
+  );
+  assert.ok(
+    (after.visa ?? 0) >= (before.visa ?? 0) + 1,
+    "Expected visa category booking counter to increase for booked linked services.",
+  );
+});
+
+test("insights generation stays within acceptable performance envelope", async () => {
+  const requests = await listTravelRequests();
+  const now = new Date("2036-01-01T09:00:00.000Z");
   const startedAt = performance.now();
   for (let index = 0; index < 400; index += 1) {
-    const snapshot = getTravelInsights();
+    const snapshot = buildTravelInsights(requests, now);
     assert.equal(typeof snapshot.totalRequests, "number");
   }
   const elapsedMs = performance.now() - startedAt;

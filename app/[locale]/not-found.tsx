@@ -1,9 +1,13 @@
 "use client";
 
 import { Plane, ArrowLeft, Home } from "lucide-react";
-import Link from "next/link";
+import { useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 export default function NotFound() {
+  const locale = useLocale();
+  const isAr = locale === "ar";
+
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
       <div className="relative mb-6">
@@ -16,11 +20,12 @@ export default function NotFound() {
       </div>
 
       <h1 className="text-3xl font-extrabold tracking-tight text-finance">
-        Page Not Found
+        {isAr ? "الصفحة غير موجودة" : "Page Not Found"}
       </h1>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-        The page you&apos;re looking for doesn&apos;t exist or has been moved.
-        Check the URL or head back to the dashboard.
+        {isAr
+          ? "الصفحة التي تبحث عنها غير موجودة أو تم نقلها. تحقق من الرابط أو ارجع إلى لوحة التحكم."
+          : "The page you're looking for doesn't exist or has been moved. Check the URL or head back to the dashboard."}
       </p>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -29,14 +34,14 @@ export default function NotFound() {
           className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-white shadow-md shadow-primary/20 transition hover:bg-blue-700"
         >
           <Home className="h-4 w-4" />
-          Dashboard
+          {isAr ? "لوحة التحكم" : "Dashboard"}
         </Link>
         <button
           onClick={() => window.history.back()}
           className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-white px-5 text-sm font-semibold text-finance shadow-sm transition hover:bg-slate-50"
         >
           <ArrowLeft className="h-4 w-4" />
-          Go Back
+          {isAr ? "رجوع" : "Go Back"}
         </button>
       </div>
     </div>

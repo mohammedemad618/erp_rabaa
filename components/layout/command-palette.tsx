@@ -2,8 +2,8 @@
 
 import {
   Building2, Bus, Calculator, Car, Cog, FileCheck, FileText,
-  Globe, LayoutDashboard, Landmark, Map, Plane, Printer,
-  ReceiptText, Scale, Search, Shield, Ticket, Users, BarChart3, X,
+  Globe, LayoutDashboard, Landmark, Map, Printer,
+  ReceiptText, Scale, Search, Shield, Ticket, Users, BarChart3, X, Plus,
 } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useEffect, useRef, useState, useMemo } from "react";
@@ -27,8 +27,7 @@ const COMMANDS: CommandItem[] = [
   { href: "/services/insurance", labelEn: "Travel Insurance", labelAr: "تأمين السفر", icon: Shield, keywords: "insurance coverage" },
   { href: "/services/tours", labelEn: "Tour Packages", labelAr: "البرامج السياحية", icon: Map, keywords: "tour package trip itinerary" },
   { href: "/services/transfers", labelEn: "Transfers", labelAr: "التوصيل", icon: Bus, keywords: "transfer airport pickup" },
-  { href: "/travel", labelEn: "Travel Requests", labelAr: "طلبات السفر", icon: Plane, keywords: "travel request flight" },
-  { href: "/transactions", labelEn: "Transactions", labelAr: "المعاملات", icon: Ticket, keywords: "transaction ticket sale" },
+  { href: "/operations", labelEn: "Operations Hub", labelAr: "مركز العمليات", icon: Ticket, keywords: "operations travel transaction ticket sale" },
   { href: "/expenses", labelEn: "Expenses", labelAr: "المصروفات", icon: ReceiptText, keywords: "expense cost" },
   { href: "/accounting", labelEn: "Accounting", labelAr: "المحاسبة", icon: Calculator, keywords: "accounting journal ledger" },
   { href: "/treasury", labelEn: "Treasury", labelAr: "الخزينة", icon: Landmark, keywords: "treasury cash bank" },
@@ -38,6 +37,11 @@ const COMMANDS: CommandItem[] = [
   { href: "/ocr", labelEn: "OCR Workspace", labelAr: "مساحة OCR", icon: FileText, keywords: "ocr document scan" },
   { href: "/templates", labelEn: "Templates", labelAr: "القوالب", icon: Printer, keywords: "template print voucher" },
   { href: "/settings", labelEn: "Settings", labelAr: "الإعدادات", icon: Cog, keywords: "settings preferences" },
+
+  // Quick Actions
+  { href: "/operations?type=travel&mode=create", labelEn: "New Travel Request", labelAr: "طلب سفر جديد", icon: Plus, keywords: "create add new travel request trip action" },
+  { href: "/operations?type=transactions&mode=create", labelEn: "New Transaction", labelAr: "معاملة جديدة", icon: Plus, keywords: "create add new transaction payment action" },
+  { href: "/crm/create", labelEn: "New Customer", labelAr: "عميل جديد", icon: Plus, keywords: "create add new customer account action" },
 ];
 
 export function CommandPalette() {
@@ -149,9 +153,8 @@ export function CommandPalette() {
                   key={cmd.href}
                   type="button"
                   onClick={() => navigate(cmd.href)}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-sm transition ${
-                    i === selectedIndex ? "bg-primary/10 text-primary" : "text-finance hover:bg-slate-50"
-                  }`}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-sm transition ${i === selectedIndex ? "bg-primary/10 text-primary" : "text-finance hover:bg-slate-50"
+                    }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="font-medium">{isAr ? cmd.labelAr : cmd.labelEn}</span>
@@ -170,3 +173,4 @@ export function CommandPalette() {
     </>
   );
 }
+

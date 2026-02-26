@@ -202,6 +202,17 @@ try {
   $anonymousTravel = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/travel/requests" -Body $null -Session $anonymousSession
   Add-CheckResult -Results $results -Name "Anonymous access to travel requests is blocked" -ExpectedStatus 401 -ActualStatus $anonymousTravel.StatusCode -Detail "GET /api/travel/requests"
 
+  $anonymousServiceBookings = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/services/bookings" -Body $null -Session $anonymousSession
+  Add-CheckResult -Results $results -Name "Anonymous access to services bookings API is blocked" -ExpectedStatus 401 -ActualStatus $anonymousServiceBookings.StatusCode -Detail "GET /api/services/bookings"
+
+  $anonymousServiceCategories = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/services/categories" -Body $null -Session $anonymousSession
+  Add-CheckResult -Results $results -Name "Anonymous access to service categories API is blocked" -ExpectedStatus 401 -ActualStatus $anonymousServiceCategories.StatusCode -Detail "GET /api/services/categories"
+
+  $anonymousServiceStatusPatch = Invoke-RequestWithStatus -Method "PATCH" -Url "$BaseUrl/api/services/bookings/HTL-999/status" -Body @{
+    status = "confirmed"
+  } -Session $anonymousSession
+  Add-CheckResult -Results $results -Name "Anonymous access to service booking status update is blocked" -ExpectedStatus 401 -ActualStatus $anonymousServiceStatusPatch.StatusCode -Detail "PATCH /api/services/bookings/HTL-999/status"
+
   $anonymousSalesTransition = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/sales/orders/TRX-9999/transition" -Body @{
     transitionId = "review_ocr"
   } -Session $anonymousSession
@@ -216,11 +227,24 @@ try {
 
   $managerPolicyActivate = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/travel/policy/versions/POL-9999/activate" -Body @{} -Session $managerSession
   Add-CheckResult -Results $results -Name "Manager cannot activate policy versions" -ExpectedStatus 403 -ActualStatus $managerPolicyActivate.StatusCode -Detail "POST /api/travel/policy/versions/POL-9999/activate"
+
+  $managerServiceCategoryCreate = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/services/categories" -Body @{
+    labelEn = "Manager Category"
+    labelAr = "Manager Category AR"
+  } -Session $managerSession
+  Add-CheckResult -Results $results -Name "Manager cannot manage service categories" -ExpectedStatus 403 -ActualStatus $managerServiceCategoryCreate.StatusCode -Detail "POST /api/services/categories"
   Invoke-Logout -Session $managerSession
 
   Assert-Login -Email $AgentEmail -Password $AgentPassword -Session $agentSession
   $agentAudit = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/travel/reports/audit" -Body $null -Session $agentSession
   Add-CheckResult -Results $results -Name "Agent cannot export travel audit report" -ExpectedStatus 403 -ActualStatus $agentAudit.StatusCode -Detail "GET /api/travel/reports/audit"
+  $agentServiceBookings = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/services/bookings" -Body $null -Session $agentSession
+  Add-CheckResult -Results $results -Name "Agent can read service bookings list" -ExpectedStatus 200 -ActualStatus $agentServiceBookings.StatusCode -Detail "GET /api/services/bookings"
+  $agentServiceCategoryCreate = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/services/categories" -Body @{
+    labelEn = "Agent Category"
+    labelAr = "Agent Category AR"
+  } -Session $agentSession
+  Add-CheckResult -Results $results -Name "Agent cannot manage service categories" -ExpectedStatus 403 -ActualStatus $agentServiceCategoryCreate.StatusCode -Detail "POST /api/services/categories"
   $agentSalesTransition = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/sales/orders/TRX-9999/transition" -Body @{
     transitionId = "review_ocr"
   } -Session $agentSession
@@ -232,6 +256,14 @@ try {
   Assert-Login -Email $AuditorEmail -Password $AuditorPassword -Session $auditorSession
   $auditorAudit = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/travel/reports/audit" -Body $null -Session $auditorSession
   Add-CheckResult -Results $results -Name "Auditor can export travel audit report" -ExpectedStatus 200 -ActualStatus $auditorAudit.StatusCode -Detail "GET /api/travel/reports/audit"
+  $auditorServiceBookings = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/services/bookings" -Body $null -Session $auditorSession
+  Add-CheckResult -Results $results -Name "Auditor can read service bookings list" -ExpectedStatus 200 -ActualStatus $auditorServiceBookings.StatusCode -Detail "GET /api/services/bookings"
+  $auditorServiceBookingCreate = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/services/bookings" -Body @{} -Session $auditorSession
+  Add-CheckResult -Results $results -Name "Auditor cannot create service bookings" -ExpectedStatus 403 -ActualStatus $auditorServiceBookingCreate.StatusCode -Detail "POST /api/services/bookings"
+  $auditorServiceStatusPatch = Invoke-RequestWithStatus -Method "PATCH" -Url "$BaseUrl/api/services/bookings/HTL-999/status" -Body @{
+    status = "confirmed"
+  } -Session $auditorSession
+  Add-CheckResult -Results $results -Name "Auditor cannot update service booking status" -ExpectedStatus 403 -ActualStatus $auditorServiceStatusPatch.StatusCode -Detail "PATCH /api/services/bookings/HTL-999/status"
   $auditorSalesTransition = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/sales/orders/TRX-9999/transition" -Body @{
     transitionId = "review_ocr"
   } -Session $auditorSession
@@ -243,11 +275,22 @@ try {
   Assert-Login -Email $FinanceEmail -Password $FinancePassword -Session $financeSession
   $financeSyncMissingRequest = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/travel/requests/TRV-9999/finance/sync" -Body $null -Session $financeSession
   Add-CheckResult -Results $results -Name "Finance reaches sync handler (not forbidden)" -ExpectedStatus 404 -ActualStatus $financeSyncMissingRequest.StatusCode -Detail "POST /api/travel/requests/TRV-9999/finance/sync"
+  $financeServiceBookingCreate = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/services/bookings" -Body @{} -Session $financeSession
+  Add-CheckResult -Results $results -Name "Finance reaches service booking create handler (not forbidden)" -ExpectedStatus 400 -ActualStatus $financeServiceBookingCreate.StatusCode -Detail "POST /api/services/bookings"
+  $financeServiceCategoryCreate = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/services/categories" -Body @{
+    labelEn = "Finance Category"
+    labelAr = "Finance Category AR"
+  } -Session $financeSession
+  Add-CheckResult -Results $results -Name "Finance cannot manage service categories" -ExpectedStatus 403 -ActualStatus $financeServiceCategoryCreate.StatusCode -Detail "POST /api/services/categories"
   Invoke-Logout -Session $financeSession
 
   Assert-Login -Email $AdminEmail -Password $AdminPassword -Session $adminSession
   $adminAudit = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/travel/reports/audit" -Body $null -Session $adminSession
   Add-CheckResult -Results $results -Name "Admin can export travel audit report" -ExpectedStatus 200 -ActualStatus $adminAudit.StatusCode -Detail "GET /api/travel/reports/audit"
+  $adminServiceBookings = Invoke-RequestWithStatus -Method "GET" -Url "$BaseUrl/api/services/bookings" -Body $null -Session $adminSession
+  Add-CheckResult -Results $results -Name "Admin can read service bookings list" -ExpectedStatus 200 -ActualStatus $adminServiceBookings.StatusCode -Detail "GET /api/services/bookings"
+  $adminServiceCategoryValidation = Invoke-RequestWithStatus -Method "POST" -Url "$BaseUrl/api/services/categories" -Body @{} -Session $adminSession
+  Add-CheckResult -Results $results -Name "Admin reaches service category handler with validation feedback" -ExpectedStatus 422 -ActualStatus $adminServiceCategoryValidation.StatusCode -Detail "POST /api/services/categories"
   Invoke-Logout -Session $adminSession
 
   $failed = @($results | Where-Object { $_.Status -eq "FAIL" })

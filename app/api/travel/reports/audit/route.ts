@@ -8,7 +8,7 @@ export async function GET() {
     return guard.response;
   }
 
-  const csv = exportTravelAuditCsv();
+  const csv = await exportTravelAuditCsv();
   return new NextResponse(csv, {
     status: 200,
     headers: {

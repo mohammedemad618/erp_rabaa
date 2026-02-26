@@ -4,6 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import type { Department, ExpenseDataset } from "../types";
 
 const departmentValues: Department[] = ["sales", "operations", "finance", "it", "hr"];
@@ -65,133 +68,84 @@ export function ExpenseRequestForm({ dataset, onSubmit, onCancel, t }: ExpenseRe
                 <h3 className="text-sm font-semibold text-finance border-b border-border pb-2">{t("entry.title")}</h3>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.date")}
-                        <input
-                            type="date"
-                            {...form.register("date")}
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
-                    </label>
-
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.department")}
-                        <select
+                    <FormField label={t("entry.date")} required>
+                        <Input type="date" {...form.register("date")} />
+                    </FormField>
+                    <FormField label={t("entry.department")} required>
+                        <Select
                             value={watchedDepartment}
                             onChange={(event) => {
                                 const department = event.target.value as Department;
-                                form.setValue("department", department, {
-                                    shouldValidate: true,
-                                });
+                                form.setValue("department", department, { shouldValidate: true });
                                 const firstCenter = dataset.costCenters.find(
                                     (center) => center.department === department,
                                 );
                                 if (firstCenter) {
-                                    form.setValue("costCenterId", firstCenter.id, {
-                                        shouldValidate: true,
-                                    });
+                                    form.setValue("costCenterId", firstCenter.id, { shouldValidate: true });
                                 }
                             }}
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
                         >
                             {departmentValues.map((department) => (
                                 <option key={department} value={department}>
                                     {t(`departments.${department}`)}
                                 </option>
                             ))}
-                        </select>
-                    </label>
+                        </Select>
+                    </FormField>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.costCenter")}
-                        <select
+                    <FormField label={t("entry.costCenter")} required>
+                        <Select
                             value={form.watch("costCenterId")}
                             onChange={(event) =>
-                                form.setValue("costCenterId", event.target.value, {
-                                    shouldValidate: true,
-                                })
+                                form.setValue("costCenterId", event.target.value, { shouldValidate: true })
                             }
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
                         >
                             {departmentCenters.map((center) => (
                                 <option key={center.id} value={center.id}>
                                     {center.name}
                                 </option>
                             ))}
-                        </select>
-                    </label>
-
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.category")}
-                        <select
-                            {...form.register("category")}
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
-                        >
+                        </Select>
+                    </FormField>
+                    <FormField label={t("entry.category")} required>
+                        <Select {...form.register("category")}>
                             {dataset.categories.map((category) => (
                                 <option key={category} value={category}>
                                     {category}
                                 </option>
                             ))}
-                        </select>
-                    </label>
+                        </Select>
+                    </FormField>
                 </div>
 
-                <label className="block text-xs font-medium text-slate-700">
-                    {t("entry.description")}
-                    <input
-                        type="text"
-                        {...form.register("description")}
-                        className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        placeholder="E.g. Client Dinner at Riyadh Hotel"
-                    />
-                </label>
+                <FormField label={t("entry.description")} required hint="E.g. Client Dinner at Riyadh Hotel">
+                    <Input type="text" {...form.register("description")} placeholder="E.g. Client Dinner at Riyadh Hotel" />
+                </FormField>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.vendor")}
-                        <input
-                            type="text"
-                            {...form.register("vendor")}
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
-                    </label>
-
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.employee")}
-                        <input
-                            type="text"
-                            {...form.register("employee")}
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
-                    </label>
+                    <FormField label={t("entry.vendor")} required>
+                        <Input type="text" {...form.register("vendor")} />
+                    </FormField>
+                    <FormField label={t("entry.employee")} required>
+                        <Input type="text" {...form.register("employee")} />
+                    </FormField>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.amount")}
-                        <input
-                            type="number"
-                            step="0.01"
-                            {...form.register("amount", { valueAsNumber: true })}
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
-                    </label>
-
-                    <label className="text-xs font-medium text-slate-700">
-                        {t("entry.paymentMethod")}
-                        <select
-                            {...form.register("paymentMethod")}
-                            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-slate-50/50 px-3 text-sm text-foreground shadow-sm transition hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
-                        >
+                    <FormField label={t("entry.amount")} required>
+                        <Input type="number" step={0.01} {...form.register("amount", { valueAsNumber: true })} />
+                    </FormField>
+                    <FormField label={t("entry.paymentMethod")} required>
+                        <Select {...form.register("paymentMethod")}>
                             {paymentMethodValues.map((paymentMethod) => (
                                 <option key={paymentMethod} value={paymentMethod}>
                                     {t(`paymentMethods.${paymentMethod}`)}
                                 </option>
                             ))}
-                        </select>
-                    </label>
+                        </Select>
+                    </FormField>
                 </div>
             </div>
 

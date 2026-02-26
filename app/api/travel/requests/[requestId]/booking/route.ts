@@ -50,7 +50,7 @@ export async function POST(
     return parsedBody.response;
   }
   const body = parsedBody.data;
-  const result = upsertTravelBooking({
+  const result = await upsertTravelBooking({
     requestId,
     actorRole,
     actorName: guard.user.name,

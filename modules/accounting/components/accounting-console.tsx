@@ -9,6 +9,8 @@ import {
   ErpPageLayout,
   ErpSection,
 } from "@/components/layout/erp-page-layout";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/utils/cn";
 import { formatCurrency } from "@/utils/format";
 import type { AccountingDataset } from "../types";
@@ -40,10 +42,16 @@ interface AccountingConsoleProps {
 export function AccountingConsole({ dataset }: AccountingConsoleProps) {
   const tAccounting = useTranslations("accounting");
   const locale = useLocale();
+  const isAr = locale === "ar";
   const nowMs = useMemo(() => {
-    return dataset.journalRows.reduce((max, row) => {
-      return Math.max(max, new Date(row.date).getTime());
-    }, 0);
+    let latest = 0;
+    for (const row of dataset.journalRows) {
+      const timestamp = new Date(row.date).getTime();
+      if (Number.isFinite(timestamp) && timestamp > latest) {
+        latest = timestamp;
+      }
+    }
+    return latest || Date.UTC(1970, 0, 1);
   }, [dataset.journalRows]);
 
   const [activeTab, setActiveTab] = useState<AccountingTab>("journal");
@@ -140,6 +148,33 @@ export function AccountingConsole({ dataset }: AccountingConsoleProps) {
     { key: "pnl", label: tAccounting("tabs.pnl") },
     { key: "balance_sheet", label: tAccounting("tabs.balanceSheet") },
   ];
+
+  if (dataset.journalRows.length === 0) {
+    return (
+      <ErpPageLayout>
+        <ErpPageHeader title={tAccounting("title")} description={tAccounting("subtitle")} />
+        <section className="surface-card col-span-12 p-6">
+          <EmptyState
+            variant="no-data"
+            title={isAr ? "لا توجد قيود محاسبية بعد" : "No accounting entries yet"}
+            description={
+              isAr
+                ? "أنشئ أول معاملة لعرض اليومية ودفتر الأستاذ والتقارير المالية."
+                : "Create your first transaction to populate journal, ledger, and financial statements."
+            }
+            action={(
+              <Link
+                href="/operations"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-white px-3 text-xs font-semibold text-finance transition hover:bg-slate-50 hover:text-primary"
+              >
+                {isAr ? "الذهاب إلى مركز العمليات" : "Go To Operations Hub"}
+              </Link>
+            )}
+          />
+        </section>
+      </ErpPageLayout>
+    );
+  }
 
   return (
     <ErpPageLayout>

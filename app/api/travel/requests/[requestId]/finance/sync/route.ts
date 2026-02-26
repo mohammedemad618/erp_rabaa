@@ -34,7 +34,7 @@ export async function POST(
     );
   }
 
-  const result = syncTravelFinance({
+  const result = await syncTravelFinance({
     requestId,
     actorRole,
     actorName: guard.user.name,

@@ -15,7 +15,7 @@ export async function GET() {
   if (!guard.ok) {
     return guard.response;
   }
-  return NextResponse.json(listTravelPolicyVersions(), { status: 200 });
+  return NextResponse.json(await listTravelPolicyVersions(), { status: 200 });
 }
 
 export async function POST(request: NextRequest) {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = createTravelPolicyDraft({
+  const result = await createTravelPolicyDraft({
     actorName: guard.user.name,
     config: body.config,
     note: body.note,
@@ -57,3 +57,4 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(result.result, { status: 201 });
 }
+

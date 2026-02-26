@@ -15,18 +15,7 @@ export function LocaleSwitcher() {
   const pathname = usePathname();
 
   function buildHref(targetLocale: (typeof locales)[number]): string {
-    const rawSearch = typeof window === "undefined" ? "" : window.location.search;
-    const params = new URLSearchParams(
-      rawSearch.startsWith("?") ? rawSearch.slice(1) : rawSearch,
-    );
-    const nextPath = params.get("next");
-
-    if (nextPath && nextPath.startsWith("/")) {
-      params.set("next", replacePathLocale(nextPath, targetLocale));
-    }
-
-    const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+    return replacePathLocale(pathname, targetLocale);
   }
 
   return (

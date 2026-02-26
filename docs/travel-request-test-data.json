@@ -1,0 +1,83 @@
+{
+  "id": "TRV-1001",
+  "linkedServiceBookings": [],
+  "employeeName": "Admin User",
+  "employeeEmail": "admin@enterprise.local",
+  "employeeGrade": "staff",
+  "department": "Operations",
+  "costCenter": "CC-100",
+  "tripType": "domestic",
+  "origin": "Riyadh",
+  "destination": "Jeddah",
+  "departureDate": "2026-03-02",
+  "returnDate": "2026-03-04",
+  "purpose": "Test travel request for verification",
+  "travelClass": "economy",
+  "estimatedCost": 1500,
+  "currency": "SAR",
+  "status": "draft",
+  "approvalRoute": [
+    {
+      "id": "manager_approval",
+      "role": "manager",
+      "status": "waiting"
+    },
+    {
+      "id": "travel_desk_review",
+      "role": "travel_desk",
+      "status": "waiting"
+    },
+    {
+      "id": "finance_approval",
+      "role": "finance",
+      "status": "waiting"
+    },
+    {
+      "id": "booking_confirmation",
+      "role": "travel_desk",
+      "status": "waiting"
+    },
+    {
+      "id": "settlement_closure",
+      "role": "finance",
+      "status": "waiting"
+    }
+  ],
+  "policyEvaluation": {
+    "policyVersion": "policy-v1.0.0",
+    "level": "compliant",
+    "findings": [
+      {
+        "code": "policy_compliant",
+        "level": "info",
+        "message": "Request complies with active travel policy."
+      }
+    ],
+    "evaluatedAt": "2026-02-25T21:18:40.918Z"
+  },
+  "booking": null,
+  "expenses": [],
+  "financeSync": {
+    "status": "not_synced",
+    "attemptCount": 0,
+    "ledgerLines": []
+  },
+  "closure": null,
+  "createdAt": "2026-02-25T21:18:40.918Z",
+  "updatedAt": "2026-02-25T21:18:40.918Z",
+  "createdBy": "System Administrator",
+  "updatedBy": "System Administrator",
+  "version": 1,
+  "auditTrail": [
+    {
+      "id": "TRV-1001-AUD-001",
+      "at": "2026-02-25T21:18:40.918Z",
+      "actorRole": "admin",
+      "actorName": "System Administrator",
+      "action": "create_request",
+      "fromStatus": null,
+      "toStatus": "draft",
+      "note": "Request created as draft."
+    }
+  ]
+}

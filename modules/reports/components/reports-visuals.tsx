@@ -50,14 +50,14 @@ export function ReportsVisuals({
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-2">
-        <section className="surface-card p-4">
+        <section className="surface-card min-w-0 p-4">
           <h3 className="text-sm font-semibold text-finance">
             {tReports("charts.marginByAirline")}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             {tReports("charts.clickToDrill")}
           </p>
-          <div className="mt-3 h-[300px]">
+          <div className="mt-3 h-[300px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={marginByAirline.slice(0, 8)}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -87,14 +87,14 @@ export function ReportsVisuals({
           </div>
         </section>
 
-        <section className="surface-card p-4">
+        <section className="surface-card min-w-0 p-4">
           <h3 className="text-sm font-semibold text-finance">
             {tReports("charts.marginByEmployee")}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             {tReports("charts.clickToDrill")}
           </p>
-          <div className="mt-3 h-[300px]">
+          <div className="mt-3 h-[300px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={marginByAgent.slice(0, 8)}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -126,11 +126,11 @@ export function ReportsVisuals({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <section className="surface-card p-4">
+        <section className="surface-card min-w-0 p-4">
           <h3 className="text-sm font-semibold text-finance">
             {tReports("charts.cashFlowActual")}
           </h3>
-          <div className="mt-3 h-[290px]">
+          <div className="mt-3 h-[290px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={cashFlow}>
                 <defs>
@@ -169,11 +169,11 @@ export function ReportsVisuals({
           </div>
         </section>
 
-        <section className="surface-card p-4">
+        <section className="surface-card min-w-0 p-4">
           <h3 className="text-sm font-semibold text-finance">
             {tReports("charts.cashFlowSimulation")}
           </h3>
-          <div className="mt-3 h-[290px]">
+          <div className="mt-3 h-[290px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={cashFlowSimulation}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />

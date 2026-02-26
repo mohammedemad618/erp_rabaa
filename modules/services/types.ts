@@ -1,10 +1,4 @@
-export type ServiceCategory =
-  | "hotel"
-  | "car_rental"
-  | "visa"
-  | "insurance"
-  | "tour"
-  | "transfer";
+export type ServiceCategory = string;
 
 export type BookingStatus =
   | "pending"
@@ -17,6 +11,7 @@ export type BookingStatus =
 export interface ServiceBooking {
   id: string;
   category: ServiceCategory;
+  customerId: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -121,7 +116,7 @@ export type AnyServiceBooking =
   | TransferBooking;
 
 export interface ServiceCategoryInfo {
-  id: ServiceCategory;
+  id: string;
   labelEn: string;
   labelAr: string;
   descriptionEn: string;
@@ -131,65 +126,5 @@ export interface ServiceCategoryInfo {
   bgColor: string;
 }
 
-export const SERVICE_CATEGORIES: ServiceCategoryInfo[] = [
-  {
-    id: "hotel",
-    labelEn: "Hotel Reservations",
-    labelAr: "حجوزات الفنادق",
-    descriptionEn: "Book rooms across partner hotels worldwide",
-    descriptionAr: "حجز غرف في فنادق شريكة حول العالم",
-    icon: "hotel",
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-  },
-  {
-    id: "car_rental",
-    labelEn: "Car Rental",
-    labelAr: "تأجير السيارات",
-    descriptionEn: "Rent vehicles with or without driver",
-    descriptionAr: "استئجار مركبات مع أو بدون سائق",
-    icon: "car",
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50",
-  },
-  {
-    id: "visa",
-    labelEn: "Visa Services",
-    labelAr: "خدمات التأشيرات",
-    descriptionEn: "Visa application processing and tracking",
-    descriptionAr: "معالجة وتتبع طلبات التأشيرات",
-    icon: "passport",
-    color: "text-violet-600",
-    bgColor: "bg-violet-50",
-  },
-  {
-    id: "insurance",
-    labelEn: "Travel Insurance",
-    labelAr: "تأمين السفر",
-    descriptionEn: "Comprehensive travel insurance plans",
-    descriptionAr: "خطط تأمين سفر شاملة",
-    icon: "shield",
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-  },
-  {
-    id: "tour",
-    labelEn: "Tour Packages",
-    labelAr: "البرامج السياحية",
-    descriptionEn: "Curated tour packages and itineraries",
-    descriptionAr: "برامج سياحية وخطط رحلات مختارة",
-    icon: "map",
-    color: "text-rose-600",
-    bgColor: "bg-rose-50",
-  },
-  {
-    id: "transfer",
-    labelEn: "Airport Transfers",
-    labelAr: "التوصيل من وإلى المطار",
-    descriptionEn: "Airport pickup, dropoff and intercity transfers",
-    descriptionAr: "خدمات التوصيل من وإلى المطار والتنقل بين المدن",
-    icon: "bus",
-    color: "text-cyan-600",
-    bgColor: "bg-cyan-50",
-  },
-];
+export { listServiceCategories as SERVICE_CATEGORIES_FN } from "./service-category-store";
+export { SERVICE_CATEGORIES } from "./service-category-store";

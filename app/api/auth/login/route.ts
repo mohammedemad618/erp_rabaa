@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const user = authenticateUser(email, password);
+  const user = await authenticateUser(email, password);
   if (!user) {
     return NextResponse.json(
       {

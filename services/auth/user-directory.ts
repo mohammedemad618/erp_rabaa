@@ -1,6 +1,9 @@
+import prisma from "@/lib/prisma";
+import { runMongoCommand, toMongoDate } from "@/lib/mongo-helper";
+import { logger } from "@/lib/logger";
 import type { AuthUserRecord, AuthenticatedUser } from "@/services/auth/types";
 
-const DEMO_USERS: AuthUserRecord[] = [
+const INITIAL_USERS: AuthUserRecord[] = [
   {
     id: "U-1001",
     name: "System Administrator",
@@ -10,7 +13,7 @@ const DEMO_USERS: AuthUserRecord[] = [
   },
   {
     id: "U-1002",
-    name: "Finance Controller",
+    name: "Finance Manager",
     email: "finance@enterprise.local",
     role: "finance_manager",
     password: "Finance@12345",
@@ -38,36 +41,85 @@ const DEMO_USERS: AuthUserRecord[] = [
   },
   {
     id: "U-1006",
-    name: "Travel Desk Operator",
+    name: "Travel Desk Officer",
     email: "traveldesk@enterprise.local",
     role: "travel_desk",
     password: "TravelDesk@12345",
   },
 ];
 
-function toAuthUser(record: AuthUserRecord): AuthenticatedUser {
-  return {
-    id: record.id,
-    name: record.name,
-    email: record.email,
-    role: record.role,
-  };
+async function ensureInitialUsers(): Promise<void> {
+  const count = await prisma.user.count();
+  if (count === 0) {
+    logger.info("[Auth] Database is empty. Seeding initial users...");
+    for (const user of INITIAL_USERS) {
+      try {
+        // Use raw MongoDB command via helper to bypass Prisma's internal transaction requirements
+        // for simple insertions in standalone (non-replica-set) MongoDB instances.
+        await runMongoCommand("users", "insert", {
+          documents: [
+            {
+              _id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              password: user.password,
+              createdAt: toMongoDate(new Date()),
+              updatedAt: toMongoDate(new Date()),
+            },
+          ],
+        });
+        logger.info(`[Auth] Seeded user: ${user.email}`);
+      } catch (e) {
+        logger.error(`[Auth] Failed to seed user ${user.email} using raw command:`, { error: e });
+      }
+    }
+  }
 }
 
-export function authenticateUser(
+function areDemoAccountsEnabled(): boolean {
+  const override = process.env.ALLOW_DEMO_ACCOUNTS?.trim().toLowerCase();
+  if (override === "true") return true;
+  if (override === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
+export async function authenticateUser(
   email: string,
   password: string,
-): AuthenticatedUser | null {
-  const normalizedEmail = email.trim().toLowerCase();
-  const record = DEMO_USERS.find(
-    (item) => item.email.toLowerCase() === normalizedEmail && item.password === password,
-  );
-  return record ? toAuthUser(record) : null;
-}
+): Promise<AuthenticatedUser | null> {
+  if (!areDemoAccountsEnabled()) return null;
 
-export function listDemoUsers(): Array<AuthenticatedUser & { password: string }> {
-  return DEMO_USERS.map((record) => ({
-    ...toAuthUser(record),
-    password: record.password,
-  }));
+  // Cache key for user lookup (password validation still needs to happen, but we can cache the user record lookup)
+  // However, for security, we should be careful. 
+  // In this demo implementation with plain text passwords (as per existing code), 
+  // we will just add logging.
+
+  await ensureInitialUsers();
+
+  const emailTrimmed = email.trim().toLowerCase();
+  logger.info(`[Auth] Attempting login for: ${emailTrimmed}`);
+
+  const record = await prisma.user.findUnique({
+    where: { email: emailTrimmed },
+  });
+
+  if (!record) {
+    logger.warn(`[Auth] User not found: ${emailTrimmed}`);
+    return null;
+  }
+
+  // In a real app, use bcrypt.compare(password, record.passwordHash)
+  if (record.password !== password) {
+    logger.warn(`[Auth] Invalid password for: ${emailTrimmed}`);
+    return null;
+  }
+
+  logger.info(`[Auth] Login successful: ${emailTrimmed}`);
+  return {
+    id: record.id,
+    email: record.email,
+    name: record.name,
+    role: record.role as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  };
 }

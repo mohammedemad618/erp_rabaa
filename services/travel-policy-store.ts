@@ -1,6 +1,10 @@
+import prisma from "@/lib/prisma";
+import { runMongoCommand, toMongoDate } from "@/lib/mongo-helper";
+import { globalCache } from "@/lib/cache";
 import { DEFAULT_TRAVEL_POLICY, type TravelPolicyConfig } from "@/modules/travel/policy/travel-policy-engine";
 import type {
   TravelPolicyAuditEvent,
+  TravelPolicyVersionStatus,
   TravelPolicyEditableConfig,
   TravelPolicyVersionRecord,
 } from "@/modules/travel/policy/types";
@@ -60,29 +64,92 @@ const TRAVEL_CLASS_RANK: Record<TravelClass, number> = {
   first: 4,
 };
 
-let policyVersionsState: TravelPolicyVersionRecord[] | null = null;
-let policyAuditState: TravelPolicyAuditEvent[] | null = null;
+function toIsoDateString(value: unknown): string {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return new Date().toISOString();
+}
 
-function clonePolicyConfig(config: TravelPolicyConfig): TravelPolicyConfig {
+interface PolicyVersionRecordData {
+  versionId: string;
+  status: unknown;
+  createdAt: unknown;
+  createdBy: string;
+  effectiveFrom: unknown;
+  activatedAt?: unknown;
+  activatedBy?: string | null;
+  note?: string | null;
+  config: unknown;
+}
+
+interface PolicyAuditRecordData {
+  auditId: string;
+  at: string;
+  actorName: string;
+  action: unknown;
+  versionId: string;
+  note?: string | null;
+}
+
+function normalizePolicyVersionStatus(value: unknown): TravelPolicyVersionStatus {
+  if (value === "draft" || value === "active" || value === "scheduled" || value === "retired") {
+    return value;
+  }
+  return "draft";
+}
+
+function normalizePolicyAuditAction(value: unknown): TravelPolicyAuditEvent["action"] {
+  return value === "activate_policy" ? "activate_policy" : "create_draft";
+}
+
+function normalizePolicyConfig(value: unknown, versionId: string): TravelPolicyConfig {
+  if (value && typeof value === "object") {
+    const config = value as TravelPolicyConfig;
+    if (typeof config.version === "string" && config.version.length > 0) {
+      return config;
+    }
+    return {
+      ...config,
+      version: versionId,
+    };
+  }
+
   return {
-    version: config.version,
-    minAdvanceDaysByTripType: { ...config.minAdvanceDaysByTripType },
-    maxBudgetByGrade: { ...config.maxBudgetByGrade },
-    maxTravelClassByGrade: { ...config.maxTravelClassByGrade },
-    budgetWarningThreshold: config.budgetWarningThreshold,
-    maxTripLengthDays: config.maxTripLengthDays,
+    ...DEFAULT_TRAVEL_POLICY,
+    version: versionId,
   };
 }
 
-function clonePolicyVersion(version: TravelPolicyVersionRecord): TravelPolicyVersionRecord {
+/**
+ * MongoDB helper to map Prisma model to Domain type
+ */
+function mapPrismaToPolicyVersion(data: PolicyVersionRecordData): TravelPolicyVersionRecord {
   return {
-    ...version,
-    config: clonePolicyConfig(version.config),
+    versionId: data.versionId,
+    status: normalizePolicyVersionStatus(data.status),
+    createdAt: toIsoDateString(data.createdAt),
+    createdBy: data.createdBy,
+    effectiveFrom: toIsoDateString(data.effectiveFrom),
+    activatedAt: data.activatedAt ? toIsoDateString(data.activatedAt) : undefined,
+    activatedBy: data.activatedBy ?? undefined,
+    note: data.note ?? undefined,
+    config: normalizePolicyConfig(data.config, data.versionId),
   };
 }
 
-function clonePolicyAuditEvent(event: TravelPolicyAuditEvent): TravelPolicyAuditEvent {
-  return { ...event };
+function mapPrismaToPolicyAudit(data: PolicyAuditRecordData): TravelPolicyAuditEvent {
+  return {
+    id: data.auditId,
+    at: data.at,
+    actorName: data.actorName,
+    action: normalizePolicyAuditAction(data.action),
+    versionId: data.versionId,
+    note: data.note ?? undefined,
+  };
 }
 
 function isNonEmptyText(value: unknown): value is string {
@@ -93,44 +160,56 @@ function isValidDate(value: string): boolean {
   return Number.isFinite(new Date(value).getTime());
 }
 
-function ensurePolicyState(): {
-  versions: TravelPolicyVersionRecord[];
-  audit: TravelPolicyAuditEvent[];
-} {
-  if (!policyVersionsState) {
+async function normalizeLegacyPolicyData(): Promise<void> {
+  // Legacy records stored activatedAt as Date while Prisma schema expects String?.
+  await runMongoCommand("travel_policies", "update", {
+    updates: [
+      {
+        q: { activatedAt: { $type: "date" } },
+        u: { $set: { activatedAt: null } },
+        multi: true,
+      },
+    ],
+  });
+}
+
+async function ensureInitialPolicy(): Promise<void> {
+  await normalizeLegacyPolicyData();
+  const count = await prisma.travelPolicyVersion.count();
+  if (count === 0) {
     const createdAt = "2026-02-01T00:00:00.000Z";
-    policyVersionsState = [
-      {
-        versionId: DEFAULT_TRAVEL_POLICY.version,
-        status: "active",
-        createdAt,
-        createdBy: "System",
-        effectiveFrom: createdAt,
-        activatedAt: createdAt,
-        activatedBy: "System",
-        note: "Initial baseline policy.",
-        config: clonePolicyConfig(DEFAULT_TRAVEL_POLICY),
-      },
-    ];
-  }
+    
+    // Seed initial policy version
+    await runMongoCommand("travel_policies", "insert", {
+      documents: [
+        {
+          versionId: DEFAULT_TRAVEL_POLICY.version,
+          status: "active",
+          createdAt: toMongoDate(createdAt),
+          createdBy: "System",
+          effectiveFrom: createdAt,
+          activatedAt: createdAt,
+          activatedBy: "System",
+          note: "Initial baseline policy.",
+          config: DEFAULT_TRAVEL_POLICY,
+        }
+      ]
+    });
 
-  if (!policyAuditState) {
-    policyAuditState = [
-      {
-        id: "POL-AUD-0001",
-        at: "2026-02-01T00:00:00.000Z",
-        actorName: "System",
-        action: "activate_policy",
-        versionId: DEFAULT_TRAVEL_POLICY.version,
-        note: "Initial baseline policy.",
-      },
-    ];
+    // Seed initial audit log
+    await runMongoCommand("travel_policy_audit", "insert", {
+      documents: [
+        {
+          auditId: "POL-AUD-0001",
+          at: createdAt,
+          actorName: "System",
+          action: "activate_policy",
+          versionId: DEFAULT_TRAVEL_POLICY.version,
+          note: "Initial baseline policy.",
+        }
+      ]
+    });
   }
-
-  return {
-    versions: policyVersionsState,
-    audit: policyAuditState,
-  };
 }
 
 function validatePolicyEditableConfig(config: TravelPolicyEditableConfig): string | null {
@@ -146,310 +225,206 @@ function validatePolicyEditableConfig(config: TravelPolicyEditableConfig): strin
   ];
 
   for (const [field, value, minExclusive] of numericChecks) {
-    if (!Number.isFinite(value)) {
-      return `${field} must be a finite number.`;
-    }
-    if (minExclusive === null) {
-      continue;
-    }
-    if (value < minExclusive) {
-      return `${field} must be >= ${minExclusive}.`;
-    }
+    if (!Number.isFinite(value)) return `${field} must be finite.`;
+    if (minExclusive !== null && value < minExclusive) return `${field} must be >= ${minExclusive}.`;
   }
 
-  if (config.budgetWarningThreshold <= 0 || config.budgetWarningThreshold >= 1) {
-    return "budgetWarningThreshold must be > 0 and < 1.";
-  }
+  if (config.budgetWarningThreshold <= 0 || config.budgetWarningThreshold >= 1) return "budgetWarningThreshold must be between 0 and 1.";
 
-  const gradeOrder: Array<keyof typeof config.maxTravelClassByGrade> = [
-    "staff",
-    "manager",
-    "director",
-    "executive",
-  ];
-  for (let index = 1; index < gradeOrder.length; index += 1) {
-    const previousGrade = gradeOrder[index - 1];
-    const currentGrade = gradeOrder[index];
-    if (
-      TRAVEL_CLASS_RANK[config.maxTravelClassByGrade[currentGrade]] <
-      TRAVEL_CLASS_RANK[config.maxTravelClassByGrade[previousGrade]]
-    ) {
-      return "maxTravelClassByGrade must be non-decreasing by seniority.";
+  const grades: Array<keyof typeof config.maxTravelClassByGrade> = ["staff", "manager", "director", "executive"];
+  for (let i = 1; i < grades.length; i++) {
+    if (TRAVEL_CLASS_RANK[config.maxTravelClassByGrade[grades[i]]] < TRAVEL_CLASS_RANK[config.maxTravelClassByGrade[grades[i - 1]]]) {
+      return "maxTravelClassByGrade must be non-decreasing.";
     }
   }
-
   return null;
 }
 
-function parseVersion(versionId: string): [number, number, number] | null {
-  const match = /^policy-v(\d+)\.(\d+)\.(\d+)$/i.exec(versionId);
-  if (!match) {
-    return null;
-  }
-  const major = Number(match[1]);
-  const minor = Number(match[2]);
-  const patch = Number(match[3]);
-  if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch)) {
-    return null;
-  }
-  return [major, minor, patch];
-}
+async function nextPolicyVersionId(): Promise<string> {
+  const latest = await prisma.travelPolicyVersion.findFirst({
+    orderBy: { createdAt: "desc" },
+    select: { versionId: true },
+  });
 
-function nextPolicyVersionId(versions: TravelPolicyVersionRecord[]): string {
-  let major = 1;
-  let minor = 0;
-  let patch = 0;
-
-  for (const version of versions) {
-    const parsed = parseVersion(version.versionId);
-    if (!parsed) {
-      continue;
-    }
-    const [parsedMajor, parsedMinor, parsedPatch] = parsed;
-    if (
-      parsedMajor > major ||
-      (parsedMajor === major && parsedMinor > minor) ||
-      (parsedMajor === major && parsedMinor === minor && parsedPatch > patch)
-    ) {
-      major = parsedMajor;
-      minor = parsedMinor;
-      patch = parsedPatch;
+  let major = 1, minor = 0, patch = 0;
+  if (latest) {
+    const match = /^policy-v(\d+)\.(\d+)\.(\d+)$/i.exec(latest.versionId);
+    if (match) {
+      major = Number(match[1]);
+      minor = Number(match[2]);
+      patch = Number(match[3]);
     }
   }
-
   return `policy-v${major}.${minor}.${patch + 1}`;
 }
 
-function nextPolicyAuditId(events: TravelPolicyAuditEvent[]): string {
-  const max = events.reduce((highest, event) => {
-    const match = /^POL-AUD-(\d+)$/i.exec(event.id);
-    if (!match) {
-      return highest;
+async function nextPolicyAuditId(): Promise<string> {
+  const count = await prisma.travelPolicyAudit.count();
+  return `POL-AUD-${String(count + 1).padStart(4, "0")}`;
+}
+
+export async function getTravelPolicyVersion(versionId: string): Promise<TravelPolicyVersionRecord | null> {
+  const record = await prisma.travelPolicyVersion.findUnique({ where: { versionId } });
+  return record ? mapPrismaToPolicyVersion(record) : null;
+}
+
+export async function listTravelPolicyVersions(): Promise<TravelPolicyVersionRecord[]> {
+  await ensureInitialPolicy();
+  const records = await prisma.travelPolicyVersion.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  return records.map(mapPrismaToPolicyVersion);
+}
+
+export async function listTravelPolicyAuditEvents(): Promise<TravelPolicyAuditEvent[]> {
+  await ensureInitialPolicy();
+  const records = await prisma.travelPolicyAudit.findMany({
+    orderBy: { at: "desc" },
+  });
+  return records.map(mapPrismaToPolicyAudit);
+}
+
+export async function getActiveTravelPolicyVersion(now: Date = new Date()): Promise<TravelPolicyVersionRecord> {
+  const cacheKey = `active_policy_${now.toDateString()}`; // Cache by day for simplicity, or implement more granular invalidation
+  
+  return globalCache.getOrSet(cacheKey, async () => {
+    await ensureInitialPolicy();
+    const nowIso = now.toISOString();
+    
+    const activeCandidate = await prisma.travelPolicyVersion.findFirst({
+      where: {
+        status: { in: ["active", "scheduled"] },
+        effectiveFrom: { lte: nowIso },
+      },
+      orderBy: { effectiveFrom: "desc" },
+    });
+
+    if (activeCandidate) return mapPrismaToPolicyVersion(activeCandidate);
+
+    const fallback = await prisma.travelPolicyVersion.findFirst({
+      where: { status: "active" },
+    }) || await prisma.travelPolicyVersion.findFirst({
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (!fallback) {
+      const nowIso = now.toISOString();
+      return mapPrismaToPolicyVersion({
+        versionId: DEFAULT_TRAVEL_POLICY.version,
+        status: "active",
+        createdAt: nowIso,
+        createdBy: "System",
+        effectiveFrom: nowIso,
+        activatedAt: nowIso,
+        activatedBy: "System",
+        note: "Fallback baseline policy.",
+        config: DEFAULT_TRAVEL_POLICY,
+      });
     }
-    const numeric = Number(match[1]);
-    return Number.isFinite(numeric) ? Math.max(highest, numeric) : highest;
-  }, 0);
-  return `POL-AUD-${String(max + 1).padStart(4, "0")}`;
+
+    return mapPrismaToPolicyVersion(fallback);
+  }, 60 * 5); // Cache for 5 minutes
 }
 
-function activeCandidateForDate(
-  versions: TravelPolicyVersionRecord[],
-  now: Date,
-): TravelPolicyVersionRecord | null {
-  const candidates = versions
-    .filter((version) => ["active", "scheduled"].includes(version.status))
-    .filter((version) => new Date(version.effectiveFrom).getTime() <= now.getTime())
-    .sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
-
-  return candidates[0] ?? null;
+export async function getActiveTravelPolicy(now: Date = new Date()): Promise<TravelPolicyConfig> {
+  const version = await getActiveTravelPolicyVersion(now);
+  return version.config;
 }
 
-export function listTravelPolicyVersions(): TravelPolicyVersionRecord[] {
-  const { versions } = ensurePolicyState();
-  return versions
-    .map((version) => clonePolicyVersion(version))
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-}
-
-export function listTravelPolicyAuditEvents(): TravelPolicyAuditEvent[] {
-  const { audit } = ensurePolicyState();
-  return audit
-    .map((event) => clonePolicyAuditEvent(event))
-    .sort((left, right) => right.at.localeCompare(left.at));
-}
-
-export function getTravelPolicyVersion(versionId: string): TravelPolicyVersionRecord | null {
-  const { versions } = ensurePolicyState();
-  const match = versions.find((version) => version.versionId === versionId);
-  return match ? clonePolicyVersion(match) : null;
-}
-
-export function getActiveTravelPolicyVersion(now: Date = new Date()): TravelPolicyVersionRecord {
-  const { versions } = ensurePolicyState();
-  const resolved = activeCandidateForDate(versions, now);
-  if (resolved) {
-    return clonePolicyVersion(resolved);
-  }
-
-  const fallback =
-    versions.find((version) => version.status === "active") ?? versions[0];
-  if (!fallback) {
-    return {
-      versionId: DEFAULT_TRAVEL_POLICY.version,
-      status: "active",
-      createdAt: now.toISOString(),
-      createdBy: "System",
-      effectiveFrom: now.toISOString(),
-      config: clonePolicyConfig(DEFAULT_TRAVEL_POLICY),
-    };
-  }
-
-  return clonePolicyVersion(fallback);
-}
-
-export function getActiveTravelPolicy(now: Date = new Date()): TravelPolicyConfig {
-  const version = getActiveTravelPolicyVersion(now);
-  return clonePolicyConfig(version.config);
-}
-
-export function createTravelPolicyDraft(
+export async function createTravelPolicyDraft(
   input: CreateTravelPolicyDraftInput,
-): CreateTravelPolicyDraftResult {
-  if (!isNonEmptyText(input.actorName)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "actorName is required.",
-      },
-    };
-  }
+): Promise<CreateTravelPolicyDraftResult> {
+  if (!isNonEmptyText(input.actorName)) return { ok: false, error: { code: "validation_failed", message: "Actor name required." } };
+  const valError = validatePolicyEditableConfig(input.config);
+  if (valError) return { ok: false, error: { code: "validation_failed", message: valError } };
 
-  const validationError = validatePolicyEditableConfig(input.config);
-  if (validationError) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: validationError,
-      },
-    };
-  }
+  const versionId = await nextPolicyVersionId();
+  const now = new Date();
+  const nowIso = now.toISOString();
 
-  const { versions, audit } = ensurePolicyState();
-  const versionId = nextPolicyVersionId(versions);
-  const createdAt = new Date().toISOString();
-  const created: TravelPolicyVersionRecord = {
-    versionId,
-    status: "draft",
-    createdAt,
-    createdBy: input.actorName.trim(),
-    effectiveFrom: createdAt,
-    note: input.note?.trim() || undefined,
-    config: {
-      version: versionId,
-      minAdvanceDaysByTripType: { ...input.config.minAdvanceDaysByTripType },
-      maxBudgetByGrade: { ...input.config.maxBudgetByGrade },
-      maxTravelClassByGrade: { ...input.config.maxTravelClassByGrade },
-      budgetWarningThreshold: input.config.budgetWarningThreshold,
-      maxTripLengthDays: input.config.maxTripLengthDays,
-    },
-  };
-
-  versions.unshift(created);
-  audit.push({
-    id: nextPolicyAuditId(audit),
-    at: createdAt,
-    actorName: input.actorName.trim(),
-    action: "create_draft",
-    versionId,
-    note: input.note?.trim(),
+  await runMongoCommand("travel_policies", "insert", {
+    documents: [
+      {
+        versionId,
+        status: "draft",
+        createdBy: input.actorName.trim(),
+        effectiveFrom: nowIso,
+        note: input.note?.trim(),
+        config: { ...input.config, version: versionId },
+        createdAt: toMongoDate(now),
+      }
+    ]
   });
 
-  return {
-    ok: true,
-    result: clonePolicyVersion(created),
-  };
+  const created = await prisma.travelPolicyVersion.findUniqueOrThrow({ where: { versionId } });
+
+  const auditId = await nextPolicyAuditId();
+  await runMongoCommand("travel_policy_audit", "insert", {
+    documents: [
+      {
+        auditId,
+        at: nowIso,
+        actorName: input.actorName.trim(),
+        action: "create_draft",
+        versionId,
+        note: input.note?.trim(),
+      }
+    ]
+  });
+
+  return { ok: true, result: mapPrismaToPolicyVersion(created) };
 }
 
-export function activateTravelPolicyVersion(
+export async function activateTravelPolicyVersion(
   input: ActivateTravelPolicyVersionInput,
-): ActivateTravelPolicyVersionResult {
-  if (!isNonEmptyText(input.versionId)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "versionId is required.",
-      },
-    };
-  }
-  if (!isNonEmptyText(input.actorName)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "actorName is required.",
-      },
-    };
-  }
-
+): Promise<ActivateTravelPolicyVersionResult> {
+  if (!isNonEmptyText(input.versionId)) return { ok: false, error: { code: "validation_failed", message: "ID required." } };
   if (input.effectiveFrom && !isValidDate(input.effectiveFrom)) {
-    return {
-      ok: false,
-      error: {
-        code: "validation_failed",
-        message: "effectiveFrom must be a valid date.",
-      },
-    };
+    return { ok: false, error: { code: "validation_failed", message: "effectiveFrom is invalid." } };
   }
-
-  const { versions, audit } = ensurePolicyState();
-  const index = versions.findIndex((version) => version.versionId === input.versionId);
-  if (index < 0) {
-    return {
-      ok: false,
-      error: {
-        code: "version_not_found",
-        message: "Policy version was not found.",
-      },
-    };
-  }
-
-  const target = versions[index];
-  if (!target) {
-    return {
-      ok: false,
-      error: {
-        code: "version_not_found",
-        message: "Policy version was not found.",
-      },
-    };
-  }
+  
+  const target = await prisma.travelPolicyVersion.findUnique({ where: { versionId: input.versionId } });
+  if (!target) return { ok: false, error: { code: "version_not_found", message: "Not found." } };
 
   const now = new Date();
   const nowIso = now.toISOString();
-  const effectiveFrom = input.effectiveFrom
-    ? new Date(input.effectiveFrom)
-    : now;
+  const effectiveFrom = input.effectiveFrom ? new Date(input.effectiveFrom) : now;
   const effectiveFromIso = effectiveFrom.toISOString();
-  const immediateActivation = effectiveFrom.getTime() <= now.getTime();
+  const isImmediate = effectiveFrom.getTime() <= now.getTime();
 
-  if (immediateActivation) {
-    for (const version of versions) {
-      if (version.versionId === target.versionId) {
-        continue;
-      }
-      if (version.status === "active") {
-        version.status = "retired";
-      }
-      if (version.status === "scheduled" && new Date(version.effectiveFrom) <= effectiveFrom) {
-        version.status = "retired";
-      }
-    }
-    target.status = "active";
+  if (isImmediate) {
+    await prisma.travelPolicyVersion.updateMany({
+      where: { status: "active", versionId: { not: input.versionId } },
+      data: { status: "retired" },
+    });
+    await prisma.travelPolicyVersion.update({
+      where: { versionId: input.versionId },
+      data: { status: "active", effectiveFrom: effectiveFromIso, activatedAt: nowIso, activatedBy: input.actorName.trim() },
+    });
+    // Invalidate cache
+    globalCache.clear();
   } else {
-    target.status = "scheduled";
+    await prisma.travelPolicyVersion.update({
+      where: { versionId: input.versionId },
+      data: { status: "scheduled", effectiveFrom: effectiveFromIso, activatedAt: nowIso, activatedBy: input.actorName.trim() },
+    });
   }
 
-  target.effectiveFrom = effectiveFromIso;
-  target.activatedAt = nowIso;
-  target.activatedBy = input.actorName.trim();
-  target.note = input.note?.trim() || target.note;
-
-  audit.push({
-    id: nextPolicyAuditId(audit),
-    at: nowIso,
-    actorName: input.actorName.trim(),
-    action: "activate_policy",
-    versionId: target.versionId,
-    note: input.note?.trim()
-      ? `effectiveFrom=${effectiveFromIso}; ${input.note.trim()}`
-      : `effectiveFrom=${effectiveFromIso}`,
+  const auditId = await nextPolicyAuditId();
+  await runMongoCommand("travel_policy_audit", "insert", {
+    documents: [
+      {
+        auditId,
+        at: nowIso,
+        actorName: input.actorName.trim(),
+        action: "activate_policy",
+        versionId: input.versionId,
+        note: `effectiveFrom=${effectiveFromIso}`,
+      }
+    ]
   });
 
-  return {
-    ok: true,
-    result: clonePolicyVersion(target),
-  };
+  const updated = await prisma.travelPolicyVersion.findUnique({ where: { versionId: input.versionId } });
+  if (!updated) return { ok: false, error: { code: "version_not_found", message: "Not found." } };
+  return { ok: true, result: mapPrismaToPolicyVersion(updated) };
 }

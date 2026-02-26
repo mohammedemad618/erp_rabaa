@@ -22,7 +22,7 @@ export async function GET(
     return guard.response;
   }
 
-  const result = getTravelTripClosureReadiness(requestId);
+  const result = await getTravelTripClosureReadiness(requestId);
   if (!result.ok) {
     const statusByCode: Record<typeof result.error.code, number> = {
       request_not_found: 404,

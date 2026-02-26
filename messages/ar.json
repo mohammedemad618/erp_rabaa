@@ -7,6 +7,7 @@
   "nav": {
     "dashboard": "لوحة التحكم",
     "travel": "طلبات السفر",
+    "operations": "مركز العمليات",
     "settings": "الإعدادات",
     "transactions": "المعاملات",
     "accounting": "المحاسبة",
@@ -178,6 +179,80 @@
     },
     "empty": {
       "noSelection": "لا توجد معاملة محددة."
+    }
+  },
+  "operations": {
+    "title": "مركز العمليات",
+    "subtitle": "عرض موحد للمعاملات وطلبات السفر مع الموافقات وسير العمل.",
+    "createTravel": "إنشاء طلب سفر",
+    "createPageDescription": "املأ النموذج أدناه لإرسال طلب سفر جديد. بعد الإرسال سيتم توجيهك إلى مركز العمليات.",
+    "typeAll": "جميع الأنواع",
+    "typeTransactions": "المعاملات",
+    "typeTravel": "طلبات السفر",
+    "filters": {
+      "title": "الفلاتر",
+      "description": "تصفية حسب النوع والحالة والبحث.",
+      "reset": "إعادة تعيين",
+      "quickTitle": "فلاتر سريعة"
+    },
+    "quickAll": "الكل",
+    "quickPending": "معلق الموافقة",
+    "quickHighValue": "عالي القيمة",
+    "quickCash": "نقدي فقط",
+    "tableTitle": "قائمة العمليات",
+    "table": {
+      "id": "المعرف",
+      "type": "النوع",
+      "customerOrEmployee": "العميل / الموظف",
+      "amount": "المبلغ",
+      "status": "الحالة",
+      "createdAt": "تاريخ الإنشاء"
+    },
+    "kpi": {
+      "matched": "المطابقة",
+      "pending": "المعلقة",
+      "highValue": "عالي القيمة",
+      "totalAmount": "إجمالي المبلغ"
+    },
+    "messages": {
+      "searchFocused": "تم التركيز على البحث"
+    },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "workflow": "سير العمل",
+      "approval": "الموافقات",
+      "accounting": "المحاسبة",
+      "services": "الخدمات المرتبطة",
+      "audit": "سجل التدقيق"
+    },
+    "panel": {
+      "travelSummary": "ملخص طلب السفر",
+      "employee": "الموظف",
+      "amount": "المبلغ",
+      "purpose": "الغرض",
+      "department": "القسم",
+      "linkedServicesTitle": "الخدمات المرتبطة بالرحلة",
+      "linkedServicesCount": "{count} خدمة",
+      "linkedServicesDesc": "حجوزات الفنادق والتأشيرات والتأمين والنقل المرتبطة بطلب السفر هذا.",
+      "linkedServicesEmpty": "لا توجد خدمات مرتبطة",
+      "linkedServicesEmptyDesc": "يمكن ربط حجوزات الخدمات بطلب السفر هذا لتتبع شامل.",
+      "auditTrail": "سجل التدقيق",
+      "auditActor": "الفاعل",
+      "auditFromTo": "من -> إلى",
+      "auditNote": "ملاحظة",
+      "customer": "العميل",
+      "amountLabel": "المبلغ"
+    },
+    "travelStatus": {
+      "draft": "مسودة",
+      "submitted": "مُرسل",
+      "manager_approved": "موافقة المدير",
+      "travel_review": "مراجعة السفر",
+      "finance_approved": "موافقة المالية",
+      "booked": "محجوز",
+      "closed": "مغلق",
+      "rejected": "مرفوض",
+      "cancelled": "ملغى"
     }
   },
   "salesFlow": {
@@ -899,7 +974,7 @@
     "logout": "تسجيل الخروج",
     "login": {
       "title": "تسجيل الدخول المؤسسي",
-      "subtitle": "استخدم أحد الحسابات التجريبية للوصول إلى الوحدات المحمية.",
+      "subtitle": "سجّل الدخول بحسابك للوصول إلى النظام.",
       "email": "البريد الإلكتروني",
       "password": "كلمة المرور",
       "submit": "تسجيل الدخول",

@@ -45,7 +45,7 @@ export async function POST(
     );
   }
 
-  const result = applySalesTransition({
+  const result = await applySalesTransition({
     orderId,
     transitionId: body.transitionId,
     pinToken: body.pinToken,

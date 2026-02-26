@@ -10,8 +10,8 @@ import {
   ErpSection,
 } from "@/components/layout/erp-page-layout";
 import { Button } from "@/components/ui/button";
-import { SlideOver } from "@/components/ui/slide-over";
 import { TravelRequestForm } from "./travel-request-form";
+import type { CreateRequestPricingContext } from "./travel-request-form";
 import { TravelRequestDetails } from "./travel-request-details";
 import type { TravelTransitionId } from "@/modules/travel/workflow/travel-approval-engine";
 import { getTravelTransitionOptions } from "@/modules/travel/workflow/travel-approval-engine";
@@ -26,6 +26,7 @@ import {
   fetchTravelTripClosureReadinessApi,
   upsertTravelBookingApi,
 } from "@/services/travel-workflow-api";
+import type { AnyServiceBooking } from "@/modules/services/types";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { getTravelDictionary } from "../i18n";
 import type {
@@ -39,8 +40,12 @@ import type {
   TripType,
 } from "../types";
 
+import type { Customer } from "@/modules/customers/types";
+
 interface TravelRequestsConsoleProps {
   initialRequests: TravelRequest[];
+  allServiceBookings: AnyServiceBooking[];
+  customers: Customer[];
 }
 
 interface NoticeState {
@@ -49,6 +54,8 @@ interface NoticeState {
 }
 
 interface FormState {
+  customerId: string;
+  linkedServiceBookingIds: string[];
   employeeName: string;
   employeeEmail: string;
   employeeGrade: EmployeeGrade;
@@ -143,9 +150,10 @@ function toDateTimeLocalInputValue(now: Date): string {
   return shifted.toISOString().slice(0, 16);
 }
 
-function buildInitialFormState(): FormState {
-  const now = new Date();
+function buildInitialFormState(now?: Date): FormState {
   return {
+    customerId: "",
+    linkedServiceBookingIds: [],
     employeeName: "",
     employeeEmail: "",
     employeeGrade: "staff",
@@ -154,8 +162,8 @@ function buildInitialFormState(): FormState {
     tripType: "domestic",
     origin: "",
     destination: "",
-    departureDate: toDateInputValue(now, 5),
-    returnDate: toDateInputValue(now, 7),
+    departureDate: now ? toDateInputValue(now, 5) : "",
+    returnDate: now ? toDateInputValue(now, 7) : "",
     purpose: "",
     travelClass: "economy",
     estimatedCost: "",
@@ -163,25 +171,23 @@ function buildInitialFormState(): FormState {
   };
 }
 
-function buildBookingInitialState(): BookingFormState {
-  const now = new Date();
+function buildBookingInitialState(now?: Date): BookingFormState {
   return {
     vendor: "Global Travel GDS",
     bookingReference: "BK-NEW-001",
     ticketNumber: "",
-    bookedAt: toDateTimeLocalInputValue(now),
+    bookedAt: now ? toDateTimeLocalInputValue(now) : "",
     totalBookedCost: "0",
     currency: "SAR",
   };
 }
 
-function buildExpenseInitialState(): ExpenseFormState {
-  const now = new Date();
+function buildExpenseInitialState(now?: Date): ExpenseFormState {
   return {
     category: "hotel",
     amount: "450",
     currency: "SAR",
-    expenseDate: toDateInputValue(now, 0),
+    expenseDate: now ? toDateInputValue(now, 0) : "",
     merchant: "Hotel Vendor",
     description: "Hotel stay expense",
     receiptFileName: "receipt.pdf",
@@ -211,7 +217,7 @@ function mapEnterpriseRoleToTravelActorRole(role?: string): TravelActorRole | nu
   }
 }
 
-export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsoleProps) {
+export function TravelRequestsConsole({ initialRequests, allServiceBookings, customers }: TravelRequestsConsoleProps) {
   const locale = useLocale();
   const isArabic = locale === "ar";
   const t = useMemo(() => getTravelDictionary(locale), [locale]);
@@ -333,7 +339,7 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
     () =>
       locale === "ar"
         ? {
-          subtitle: "أدخل بيانات الموظف والرحلة في أقسام واضحة ثم أنشئ مسودة الطلب.",
+          subtitle: "أنشئ طلب سفر شامل في 5 خطوات: العميل، الموظف، الرحلة، الخدمات، ثم المراجعة.",
           employeeSection: "بيانات الموظف",
           employeeHint: "معلومات تعريف مقدم الطلب والمركز الإداري.",
           tripSection: "تفاصيل الرحلة",
@@ -344,7 +350,7 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
         }
         : {
           subtitle:
-            "Enter employee and trip details in structured sections, then create a request draft.",
+            "Create a comprehensive travel request in 5 steps: customer, employee, trip, services, then review.",
           employeeSection: "Employee Information",
           employeeHint: "Requester identity and organizational ownership.",
           tripSection: "Trip Details",
@@ -435,6 +441,35 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
   const [closureReadiness, setClosureReadiness] = useState<TravelClosureReadiness | null>(null);
   const [isLoadingClosureReadiness, setIsLoadingClosureReadiness] = useState(false);
+
+  useEffect(() => {
+    const now = new Date();
+    setForm((previous) =>
+      previous.departureDate && previous.returnDate
+        ? previous
+        : {
+            ...previous,
+            departureDate: toDateInputValue(now, 5),
+            returnDate: toDateInputValue(now, 7),
+          },
+    );
+    setBookingForm((previous) =>
+      previous.bookedAt
+        ? previous
+        : {
+            ...previous,
+            bookedAt: toDateTimeLocalInputValue(now),
+          },
+    );
+    setExpenseForm((previous) =>
+      previous.expenseDate
+        ? previous
+        : {
+            ...previous,
+            expenseDate: toDateInputValue(now, 0),
+          },
+    );
+  }, []);
 
   const actorRole = useMemo(
     () => mapEnterpriseRoleToTravelActorRole(sessionUser?.role),
@@ -654,6 +689,12 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
     });
   }, [actorRole, selectedRequest]);
 
+  const linkedBookings = useMemo(() => {
+    if (!selectedRequest) return [];
+    const ids = selectedRequest.linkedServiceBookings;
+    if (!ids.length) return [];
+    return allServiceBookings.filter((b) => ids.includes(b.id));
+  }, [selectedRequest, allServiceBookings]);
 
   function updateForm<K extends keyof FormState>(field: K, value: FormState[K]): void {
     setForm((previous: FormState) => ({ ...previous, [field]: value }));
@@ -686,24 +727,33 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
     setSelectedId(updatedRequest.id);
   }
 
-  async function handleCreateRequest(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+  async function handleCreateRequest(
+    event: React.FormEvent<HTMLFormElement>,
+    pricing?: CreateRequestPricingContext,
+  ): Promise<void> {
     event.preventDefault();
     if (!canCreate || !actorRole || !actorName.trim()) {
       notify(t.notices.validationFailed, "error");
       return;
     }
 
-    const estimatedCost = Number(form.estimatedCost);
-    if (!Number.isFinite(estimatedCost) || estimatedCost <= 0) {
+    const baseEstimatedCost = pricing?.baseTripEstimatedCost ?? Number(form.estimatedCost);
+    if (!Number.isFinite(baseEstimatedCost) || baseEstimatedCost <= 0) {
       notify(t.notices.validationFailed, "error");
       return;
     }
+    const additionalServicesCost = pricing?.additionalServicesEstimatedCost ?? 0;
+    const estimatedCost = pricing?.totalEstimatedCost ?? baseEstimatedCost + additionalServicesCost;
+
+    const employeeName = sessionUser?.name ?? form.employeeName;
+    const employeeEmail = sessionUser?.email ?? form.employeeEmail;
 
     try {
       setIsCreating(true);
       const created = await createTravelRequestApi({
-        employeeName: form.employeeName,
-        employeeEmail: form.employeeEmail,
+        customerId: form.customerId || undefined,
+        employeeName,
+        employeeEmail,
         employeeGrade: form.employeeGrade,
         department: form.department,
         costCenter: form.costCenter,
@@ -714,12 +764,16 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
         returnDate: form.returnDate,
         purpose: form.purpose,
         travelClass: form.travelClass,
+        baseEstimatedCost,
+        additionalServicesCost,
         estimatedCost,
         currency: form.currency,
+        linkedServiceBookingIds: form.linkedServiceBookingIds,
+        serviceCostOverrides: pricing?.serviceCostOverrides,
       });
       setRequests((previous) => sortByUpdatedAtDesc([created, ...previous]));
       setSelectedId(created.id);
-      setForm(buildInitialFormState());
+      setForm(buildInitialFormState(new Date()));
       notify(t.notices.created, "success");
       setIsRequestFormOpen(false);
     } catch (error) {
@@ -864,7 +918,7 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
       });
       mergeUpdatedRequest(response.request);
       setExpenseForm(() => ({
-        ...buildExpenseInitialState(),
+        ...buildExpenseInitialState(new Date()),
         currency: selectedRequest.currency,
       }));
       notify(travelOpsText.expenseSubmitted, "success");
@@ -1005,26 +1059,43 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
         </article>
       </ErpKpiGrid>
 
-      <div className="col-span-12 xl:col-span-12">
-        <SlideOver
-          isOpen={isRequestFormOpen}
-          onClose={() => setIsRequestFormOpen(false)}
-          title={t.labels.createRequest}
-          description={requestFormText.subtitle}
-        >
+      {isRequestFormOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+          <header className="flex items-center justify-between border-b border-border px-6 py-4">
+            <div>
+              <h2 className="text-lg font-bold text-finance">{t.labels.createRequest}</h2>
+              <p className="text-xs text-muted-foreground">{requestFormText.subtitle}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsRequestFormOpen(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-slate-100 hover:text-foreground"
+            >
+              <span className="text-lg leading-none">&times;</span>
+            </button>
+          </header>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="mx-auto max-w-3xl">
           <TravelRequestForm
             form={form}
             updateForm={updateForm}
             onSubmit={handleCreateRequest}
             isCreating={isCreating}
             canCreate={canCreate}
-            sessionAvailable={!!sessionUser}
+            sessionUser={sessionUser}
+            customers={customers}
+            serviceBookings={allServiceBookings}
+            locale={locale}
             layoutText={layoutText}
             requestFormText={requestFormText}
             t={t}
           />
-        </SlideOver>
+            </div>
+          </div>
+        </div>
+      )}
 
+      <div className="col-span-12 xl:col-span-12">
         <div className="space-y-4">
           <section className="surface-card p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1206,6 +1277,7 @@ export function TravelRequestsConsole({ initialRequests }: TravelRequestsConsole
             <div className="space-y-4">
               <TravelRequestDetails
                 request={selectedRequest}
+                linkedBookings={linkedBookings}
                 locale={locale}
                 isArabic={isArabic}
                 t={t}

@@ -4,7 +4,9 @@ import { AUTH_SESSION_COOKIE } from "@/services/auth/constants";
 import { getRolePermissions } from "@/services/auth/rbac";
 import {
   createSessionToken,
+  DEFAULT_SESSION_TTL_SECONDS,
   getSessionCookieOptions,
+  REMEMBER_ME_SESSION_TTL_SECONDS,
 } from "@/services/auth/session";
 import { parseJsonBodySafe } from "@/services/http/request-body";
 import { authenticateUser } from "@/services/auth/user-directory";
@@ -12,6 +14,7 @@ import { authenticateUser } from "@/services/auth/user-directory";
 interface LoginRequestBody {
   email?: string;
   password?: string;
+  rememberMe?: boolean;
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -40,6 +43,7 @@ export async function POST(request: NextRequest) {
   const body = parsedBody.data;
   const email = body.email?.trim() ?? "";
   const password = body.password ?? "";
+  const rememberMe = body.rememberMe === true;
 
   if (!email || !password) {
     return NextResponse.json(
@@ -74,7 +78,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const token = createSessionToken(user);
+  const sessionTtlSeconds = rememberMe
+    ? REMEMBER_ME_SESSION_TTL_SECONDS
+    : DEFAULT_SESSION_TTL_SECONDS;
+  const token = createSessionToken(user, sessionTtlSeconds);
   const response = NextResponse.json(
     {
       authenticated: true,
@@ -83,6 +90,6 @@ export async function POST(request: NextRequest) {
     },
     { status: 200 },
   );
-  response.cookies.set(AUTH_SESSION_COOKIE, token, getSessionCookieOptions());
+  response.cookies.set(AUTH_SESSION_COOKIE, token, getSessionCookieOptions(sessionTtlSeconds));
   return response;
 }

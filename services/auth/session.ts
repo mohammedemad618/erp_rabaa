@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { AuthenticatedUser, SessionPayload } from "@/services/auth/types";
 
-const SESSION_TTL_SECONDS = 60 * 60 * 10;
+export const DEFAULT_SESSION_TTL_SECONDS = 60 * 60 * 10;
+export const REMEMBER_ME_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const SECRET_FALLBACK = "enterprise-travel-erp-local-session-secret";
 
 function getSessionSecret(): string {
@@ -33,12 +34,15 @@ function signPayload(payloadB64: string): string {
   return createHmac("sha256", getSessionSecret()).update(payloadB64).digest("base64url");
 }
 
-export function createSessionToken(user: AuthenticatedUser): string {
+export function createSessionToken(
+  user: AuthenticatedUser,
+  ttlSeconds = DEFAULT_SESSION_TTL_SECONDS,
+): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
     ...user,
     iat: nowSeconds,
-    exp: nowSeconds + SESSION_TTL_SECONDS,
+    exp: nowSeconds + ttlSeconds,
   };
   const payloadB64 = encodeBase64Url(JSON.stringify(payload));
   const signature = signPayload(payloadB64);
@@ -85,7 +89,7 @@ export function verifySessionToken(token: string): SessionPayload | null {
   return payload;
 }
 
-export function getSessionCookieOptions(maxAgeSeconds = SESSION_TTL_SECONDS): {
+export function getSessionCookieOptions(maxAgeSeconds = DEFAULT_SESSION_TTL_SECONDS): {
   httpOnly: boolean;
   sameSite: "lax";
   secure: boolean;

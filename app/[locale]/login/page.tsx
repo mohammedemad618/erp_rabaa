@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 
 interface LoginErrorPayload {
   code?: string;
+  message?: string;
 }
 
 interface DemoAccount {
@@ -40,6 +41,21 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
 ];
 
 const QUICK_LOGIN_ENABLED = process.env.NODE_ENV !== "production";
+const REQUEST_TIMEOUT_MS = 12000;
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 export default function LoginPage() {
   const locale = useLocale();
@@ -58,10 +74,14 @@ export default function LoginPage() {
 
     async function checkSession(): Promise<void> {
       try {
-        const response = await fetch("/api/auth/session", {
-          method: "GET",
-          cache: "no-store",
-        });
+        const response = await fetchWithTimeout(
+          "/api/auth/session",
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+          REQUEST_TIMEOUT_MS,
+        );
         const payload = (await response.json()) as { authenticated?: boolean };
         if (!active) {
           return;
@@ -85,16 +105,20 @@ export default function LoginPage() {
     setError("");
     try {
       setIsSubmitting(true);
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetchWithTimeout(
+        "/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: nextEmail,
+            password: nextPassword,
+          }),
         },
-        body: JSON.stringify({
-          email: nextEmail,
-          password: nextPassword,
-        }),
-      });
+        REQUEST_TIMEOUT_MS,
+      );
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as LoginErrorPayload | null;
@@ -103,6 +127,12 @@ export default function LoginPage() {
             isArabic
               ? "Please enter both email and password."
               : "Please enter both email and password.",
+          );
+        } else if (payload?.code === "auth_unavailable") {
+          setError(
+            isArabic
+              ? "Authentication service is unavailable. Please try again shortly."
+              : "Authentication service is unavailable. Please try again shortly.",
           );
         } else {
           setError(tLogin("failed"));
@@ -119,8 +149,16 @@ export default function LoginPage() {
         return;
       }
       window.location.href = `/${locale}`;
-    } catch {
-      setError(tLogin("failed"));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setError(
+          isArabic
+            ? "Login timed out. Please check connection and try again."
+            : "Login timed out. Please check connection and try again.",
+        );
+      } else {
+        setError(tLogin("failed"));
+      }
       emailRef.current?.focus();
       setShake(true);
       setTimeout(() => setShake(false), 600);

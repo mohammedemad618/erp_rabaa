@@ -14,6 +14,24 @@ interface LoginRequestBody {
   password?: string;
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return await new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("auth_timeout"));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+  });
+}
+
 export async function POST(request: NextRequest) {
   const parsedBody = await parseJsonBodySafe<LoginRequestBody>(request);
   if (!parsedBody.ok) {
@@ -33,7 +51,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const user = await authenticateUser(email, password);
+  let user: Awaited<ReturnType<typeof authenticateUser>>;
+  try {
+    user = await withTimeout(authenticateUser(email, password), 12000);
+  } catch {
+    return NextResponse.json(
+      {
+        code: "auth_unavailable",
+        message: "Authentication service is temporarily unavailable.",
+      },
+      { status: 503 },
+    );
+  }
+
   if (!user) {
     return NextResponse.json(
       {

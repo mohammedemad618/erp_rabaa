@@ -11,6 +11,7 @@ export type AuthPermission =
   | "reports.view"
   | "ocr.view"
   | "templates.view"
+  | "templates.manage"
   | "travel.view"
   | "travel.policy.view"
   | "travel.policy.manage"
@@ -39,6 +40,7 @@ export const FULL_PERMISSIONS: readonly AuthPermission[] = [
   "reports.view",
   "ocr.view",
   "templates.view",
+  "templates.manage",
   "travel.view",
   "travel.policy.view",
   "travel.policy.manage",

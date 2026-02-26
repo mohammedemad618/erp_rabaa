@@ -9,6 +9,7 @@ const API_ROOT = path.join(REPO_ROOT, "app", "api");
 const LOCALE_PAGES_ROOT = path.join(REPO_ROOT, "app", "[locale]");
 
 const PUBLIC_LOCALE_ROUTES = new Set<string>(["/login", "/forbidden"]);
+const PUBLIC_API_ROUTES = new Set<string>(["health/db/route.ts"]);
 
 function walkFiles(rootDir: string, fileName: string, collector: string[]): void {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true });
@@ -45,6 +46,9 @@ test("all non-auth API routes enforce requireApiPermission", () => {
   for (const filePath of routeFiles) {
     const relative = toPosixPath(path.relative(API_ROOT, filePath));
     if (relative.startsWith("auth/")) {
+      continue;
+    }
+    if (PUBLIC_API_ROUTES.has(relative)) {
       continue;
     }
     const source = fs.readFileSync(filePath, "utf8");

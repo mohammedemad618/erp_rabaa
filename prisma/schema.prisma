@@ -195,6 +195,65 @@ model TravelPolicyAudit {
   @@map("travel_policy_audit")
 }
 
+// --- Template Engine Domain ---
+
+model DocumentTemplate {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  templateId      String   @unique
+  slug            String   @unique
+  scope           String
+  name            String
+  description     String?
+  outputKind      String
+  tags            String[]
+  activeVersionId String?
+  createdAt       DateTime @default(now())
+  createdBy       String
+  updatedAt       DateTime @updatedAt
+  updatedBy       String
+  archivedAt      String?
+
+  @@index([scope])
+  @@index([updatedAt])
+  @@map("document_templates")
+}
+
+model DocumentTemplateVersion {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  versionId     String   @unique
+  templateId    String
+  status        String
+  schemaVersion Int      @default(1)
+  title         String
+  payload       Json
+  createdAt     DateTime @default(now())
+  createdBy     String
+  activatedAt   String?
+  activatedBy   String?
+  note          String?
+
+  @@index([templateId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("document_template_versions")
+}
+
+model DocumentTemplateAudit {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  auditId    String   @unique
+  templateId String
+  versionId  String?
+  actorName  String
+  action     String
+  at         String
+  note       String?
+  metadata   Json?
+
+  @@index([templateId])
+  @@index([at])
+  @@map("document_template_audit")
+}
+
 // --- Sales/Transaction Domain ---
 
 model SalesTransaction {

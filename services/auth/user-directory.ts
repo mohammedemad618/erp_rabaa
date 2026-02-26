@@ -81,8 +81,8 @@ function areDemoAccountsEnabled(): boolean {
   const override = process.env.ALLOW_DEMO_ACCOUNTS?.trim().toLowerCase();
   if (override === "false") return false;
   if (override === "true") return true;
-  // This project uses demo authentication by default unless explicitly disabled.
-  return true;
+  // Demo authentication is enabled by default in non-production environments only.
+  return process.env.NODE_ENV !== "production";
 }
 
 export async function authenticateUser(

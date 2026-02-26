@@ -87,7 +87,10 @@ test("role permission boundaries remain enforced for service operations", () => 
 
   assert.equal(hasPermission("manager", "settings.manage"), false);
   assert.equal(hasPermission("agent", "settings.manage"), false);
+  assert.equal(hasPermission("agent", "templates.manage"), false);
+  assert.equal(hasPermission("finance_manager", "templates.manage"), false);
 
   assert.equal(hasPermission("finance_manager", "travel.transition"), true);
   assert.equal(hasPermission("travel_desk", "travel.transition"), true);
+  assert.equal(hasPermission("admin", "templates.manage"), true);
 });
